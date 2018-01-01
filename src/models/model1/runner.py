@@ -1,14 +1,14 @@
 import tensorflow as tf
 import numpy as np
-from .caterpillarnet import FeedForward
-from .utils import GrabSequence
+from utils import GrabSequence
+from feedforward import CaterpillarNetwork
 
 
-class CaterpillarNetwork(object):
+class Learner(object):
     """
     RNN to n second ahead prediction
     """
-    def __init__(self, FLAGS, name='CaterpillarNet'):
+    def __init__(self, ff_params, FLAGS, name='CaterpillarNet'):
         """
         Parameters
         ----------
@@ -27,21 +27,9 @@ class CaterpillarNetwork(object):
         self.g = tf.Graph()
         self.sess = tf.Session(graph=self.g)
         with self.g.as_default():
-            self.feedforward = FeedForward(**ff_params)
+            self.feedforward = CaterpillarNetwork(**ff_params)
         self.FLAGS = FLAGS
         self.name = name
-
-    def __call__(self, _x):
-        """
-        Parameters
-        ----------
-        _x: tf.Tensor
-            Input
-
-        Returns
-        -------
-        tf.Tensor
-        """
 
     def fit(self, X, t_ix=None, input_seq_len=100, tdelta_predict=10, stride=1):
         """
@@ -58,7 +46,7 @@ class CaterpillarNetwork(object):
         """
         if t_ix is None:
             t_ix = np.arange(X.shape[0])
-        self.init_train(X, t_ix, input_seq_len, tdelta_predict, stride)
+        self.initialize_train_graph(X, t_ix, input_seq_len, tdelta_predict, stride)
         self.train(self.FLAGS.n_epochs)
 
     def initialize_train_graph(self, X, t_ix, input_seq_len, tdelta_predict, stride):
@@ -78,24 +66,29 @@ class CaterpillarNetwork(object):
             description
 
         """
+        dim_X = X.shape[1]
         example_generator = GrabSequence(X, t_ix, input_seq_len, tdelta_predict, stride=stride)
         with self.g.as_default():
             with tf.variable_scope(self.name):
-                train_ds = tf.data.Dataset.from_generator(example_generator)
+                train_ds = tf.data.Dataset.from_generator(example_generator,
+                                                          (tf.float32, tf.float32),
+                                                          (tf.TensorShape([None, dim_X]),
+                                                           tf.TensorShape([dim_X])))
+                train_ds.shuffle(buffer_size=100000)
                 train_ds = train_ds.batch(self.FLAGS.batch_size)
                 iterator = tf.data.Iterator.from_structure(train_ds.output_types,
                                                            train_ds.output_shapes)
                 self.training_init_op = iterator.make_initializer(train_ds)
                 global_step = tf.Variable(0, trainable=False)
                 starter_learning_rate = tf.Variable(.001, trainable=False)
+                self.starter_learning_rate = starter_learning_rate
                 lr_decay = tf.Variable(0.999995, trainable=False)
                 decay_steps = tf.Variable(1, trainable=False)
                 learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
                                                            decay_steps, lr_decay, staircase=True)
                 batch = iterator.get_next()
-                self.is_training = tf.Variable(True)
-                self.x = batch['x']
-                self.y = batch['y']
+                self.x = batch[0]
+                self.y = batch[1]
                 self.yhat = self.feedforward(self.x)
                 with tf.variable_scope('loss'):
                     h_loss = tf.losses.huber_loss(labels=self.y, predictions=self.yhat,
@@ -105,10 +98,13 @@ class CaterpillarNetwork(object):
                     w_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
                     w_ss_list = [tf.nn.l2_loss(v) for v in w_vars if 'bias' not in v.name]
                     l2reg = tf.reduce_sum(w_ss_list, name='l2reg')  # l2 regularization
+                    self.l2reg = l2reg
                     w_l1_list = [tf.reduce_sum(tf.abs(v)) for v in w_vars if 'bias' not in
                                  v.name]
                     l1reg = tf.reduce_sum(w_l1_list, name='l1reg')
-                    reg_loss = self.l2reg_coeff * l2reg + self.l1reg_coeff * l1reg
+                    self.l1reg = l1reg
+                    reg_loss = self.FLAGS.l2reg_coeff * l2reg + self.FLAGS.l1reg_coeff * l1reg
+                    self.reg_loss_sy = reg_loss
                     total_loss_op = tf.add(h_loss, reg_loss, name='loss_op')
                 with tf.variable_scope('optimization'):
                     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
@@ -123,6 +119,8 @@ class CaterpillarNetwork(object):
                                      tf.local_variables_initializer())
                 self.summary_merged = tf.summary.merge_all()
                 self.summary_writer = tf.summary.FileWriter(self.FLAGS.logdir, self.g)
+
+                self.i_e = 0
 
     def train(self, epochs):
         """
@@ -155,7 +153,7 @@ class CaterpillarNetwork(object):
                         i_es = 0
                         while(True):
                             try:
-                                if i_es > 0:
+                                if (i_es > 0) or (self.summary_merged is None):
                                     if (((i_es % 10) == 0) and ((i_e % 5) == 0)):
                                         _, _, l1r, l2r, huber_loss, reg_loss = \
                                             sess.run([update_ops, train_op, l1reg, l2reg,
@@ -177,13 +175,13 @@ class CaterpillarNetwork(object):
                         print(inst)
                     self.i_e = i_e
 
-        def predict(self, x):
-            """
-            Evaluate prediction over model.
+    def predict(self, x):
+        """
+        Evaluate prediction over model.
 
-            Parameters
-            ----------
-            x: numpy.array
-            """
-            feed_dict = {self.x: np.expand_dims(x, axis=[0, 1])}
-            return self.sess.run(self.yhat, feed_dict)
+        Parameters
+        ----------
+        x: numpy.array
+        """
+        feed_dict = {self.x: np.expand_dims(x, axis=[0, 1])}
+        return self.sess.run(self.y, feed_dict)

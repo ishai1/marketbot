@@ -2,7 +2,7 @@ import tensorflow as tf
 Dense = tf.layers.Dense
 
 
-class FeedForward(object):
+class CaterpillarNetwork(object):
     """
                                          +-
                                          | \-pred_price
@@ -27,7 +27,7 @@ class FeedForward(object):
                 return tf.nn.rnn_cell.BasicLSTMCell(self.dim_hidden, activation=tf.nn.elu)
             self.cell_fw = tf.nn.rnn_cell.MultiRNNCell([lstm_cell(dim_hidden) for
                                                         i in range(rnn_stack_height)])
-            self.denseout = Dense(dim_features, activation=tf.relu)
+            self.denseout = Dense(dim_features, activation=tf.nn.relu)
 
     def __call__(self, _x):
         """
@@ -40,9 +40,8 @@ class FeedForward(object):
         -------
         tf.Tensor
         """
-        with self.g.as_default():
-            _x = tf.transpose(_x, [1, 0, 2])  # to time major
-            h_out, _ = tf.nn.dynamic_rnn(cell=self.cell_fw, inputs=_x,
-                                         initial_state=None,
-                                         time_major=True, dtype=tf.float32)
-            return self.denseout(h_out[-1, :, :])  # predict based on final hidden output
+        _x = tf.transpose(_x, [1, 0, 2])  # to time major
+        h_out, _ = tf.nn.dynamic_rnn(cell=self.cell_fw, inputs=_x,
+                                     initial_state=None,
+                                     time_major=True, dtype=tf.float32)
+        return self.denseout(h_out[-1, :, :])  # predict based on final hidden output

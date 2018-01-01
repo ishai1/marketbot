@@ -24,20 +24,20 @@ class GrabSequence(object):
         self.data = pd.DataFrame(X, index=t_ix)
         self.input_seq_len = input_seq_len
         self.time_gap_to_predict = time_gap_to_predict
-        self.start_ptr = 0
         self.get_end_ptr = lambda start: start + self.input_seq_len
         self.get_predict_time = lambda start: (self.data.index[self.get_end_ptr(start)] +
                                                self.time_gap_to_predict)
         self.latest_time = self.data.index[-1]
         # TODO: this seems like an awful way to do this
         self.get_predict_index = lambda start: \
-            (None if (self.get_predict_time(start) < self.latest_time)
+            (None if (self.get_predict_time(start) > self.latest_time)
              else self.data.index[self.data.index > self.get_predict_time(start)][0])
 
     def __call__(self):
-        predict_index = self.get_predict_index(self.data.index[0])
+        self.start_ptr = 0
+        predict_index = self.get_predict_index(self.start_ptr)
         while predict_index:
-            yield {'x': self.data.iloc[self.start_ptr:self.start_ptr + self.input_seq_len, :],
-                   'y': self.data.iloc[predict_index, :]}
+            yield (self.data.iloc[self.start_ptr:self.start_ptr + self.input_seq_len].values,
+                   self.data.loc[predict_index, :].values)
             self.start_ptr += self.stride
             predict_index = self.get_predict_index(self.start_ptr)
