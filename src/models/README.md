@@ -1,57 +1,57 @@
-- [Tasks](#org38e389c)
-    - [Detrend](#org7b49567)
-    - [Plot output](#org5ef5075)
-    - [Remove periodicity where possible](#orgc91e3e6)
-    - [Normalize using training data (?)](#orgbff6e0d)
-  - [Analysis](#orgcd94edc)
-    - [setup](#org2a8a8eb)
-      - [Load](#orgf4b6581)
-      - [model config](#org9b99d1d)
-    - [explore](#orga3e1b1d)
-    - [debug](#orgb4f66e1)
-      - [run](#org121ca54)
-      - [genertor](#orgb4c48db)
-    - [run](#org4ed9da9)
+- [Tasks](#org838e9a7)
+    - [Detrend](#org5660af9)
+    - [Plot output](#org202b101)
+    - [Remove periodicity where possible](#org46ff786)
+    - [Normalize using training data (?)](#org6159dcc)
+  - [Analysis](#orgada9dbd)
+    - [setup](#orgfdaba2b)
+      - [Load](#orge786748)
+      - [model config](#orga38c5b0)
+    - [explore](#orge5a50a2)
+    - [debug](#org1d403ec)
+      - [run](#orge9afa28)
+      - [genertor](#org232e9b3)
+    - [run](#org9800f36)
 
 
-<a id="org38e389c"></a>
+<a id="org838e9a7"></a>
 
 # TODO Tasks
 
 
-<a id="org7b49567"></a>
+<a id="org5660af9"></a>
 
 ## Detrend
 
 -   First difference + accumulate differences up to prediction time.
 
 
-<a id="org5ef5075"></a>
+<a id="org202b101"></a>
 
 ## Plot output
 
 
-<a id="orgc91e3e6"></a>
+<a id="org46ff786"></a>
 
 ## Remove periodicity where possible
 
 
-<a id="orgbff6e0d"></a>
+<a id="org6159dcc"></a>
 
 ## Normalize using training data (?)
 
 
-<a id="orgcd94edc"></a>
+<a id="orgada9dbd"></a>
 
 # Analysis
 
 
-<a id="org2a8a8eb"></a>
+<a id="orgfdaba2b"></a>
 
 ## setup
 
 
-<a id="orgf4b6581"></a>
+<a id="orge786748"></a>
 
 ### Load
 
@@ -59,7 +59,7 @@
 import pandas as pd
 import os 
 from datetime import datetime as dt
-df = pd.read_csv('../../data/data.csv')
+df = pd.read_csv('marketbot/data/data.csv')
 df['time'] = pd.to_datetime(df.time)
 df['timestamp'] = df.time.apply(dt.timestamp)
 ```
@@ -72,12 +72,12 @@ assert np.diff(data.index).min() > 0  # data is sorted
 ```
 
 
-<a id="org9b99d1d"></a>
+<a id="orga38c5b0"></a>
 
 ### model config
 
 ```ipython
-os.chdir('model1')
+os.chdir('marketbot/src/catnet')
 ```
 
 ```ipython
@@ -103,7 +103,7 @@ ff_params = dict(dim_hidden=20, dim_features=2, rnn_stack_height=3)
 ```
 
 
-<a id="orga3e1b1d"></a>
+<a id="orge5a50a2"></a>
 
 ## explore
 
@@ -113,18 +113,27 @@ for i, col in enumerate(data.columns.values):
    data.reset_index().plot.scatter(x='timestamp', y=col, ax=axes[i], s=.7)
 ```
 
+![img](./obipy-resources/19656F3W.png)
+
 ```ipython
 from pandas.plotting import scatter_matrix
 scatter_matrix(data, alpha=0.2, figsize=(6, 6), diagonal='kde')
 ```
 
+    array([[<matplotlib.axes._subplots.AxesSubplot object at 0x7f271599bbe0>,
+    <matplotlib.axes._subplots.AxesSubplot object at 0x7f2715aaaeb8>],
+    [<matplotlib.axes._subplots.AxesSubplot object at 0x7f27159c8be0>,
+    <matplotlib.axes._subplots.AxesSubplot object at 0x7f271582e438>]], dtype=object)
 
-<a id="orgb4f66e1"></a>
+![img](./obipy-resources/19656SBd.png)
+
+
+<a id="org1d403ec"></a>
 
 ## debug
 
 
-<a id="org121ca54"></a>
+<a id="orge9afa28"></a>
 
 ### run
 
@@ -143,7 +152,7 @@ reload(runner)
 ```
 
 
-<a id="orgb4c48db"></a>
+<a id="org232e9b3"></a>
 
 ### genertor
 
@@ -180,7 +189,7 @@ with sess.as_default():
 ```
 
 
-<a id="org4ed9da9"></a>
+<a id="org9800f36"></a>
 
 ## run
 
