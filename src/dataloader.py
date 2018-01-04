@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 def get_data(path, interval_length=1, stride_length=10):
     df = pd.read_csv(path, index_col='sequence')
     df['time'] = pd.to_datetime(df['time'])
@@ -8,7 +9,7 @@ def get_data(path, interval_length=1, stride_length=10):
     agg_df.volume = agg_df.volume.fillna(0.0)
     agg_df.price = agg_df.price.fillna(method='ffill')
     agg_df['change'] = agg_df.price.pct_change()
-    agg_df['outcome']= agg_df.price.pct_change(periods=(-1 * stride_length))
+    agg_df['outcome'] = agg_df.price.pct_change(periods=(-1 * stride_length))
 
     return agg_df
 
@@ -21,8 +22,9 @@ def discretize(df, interval_length):
         grouped = df.resample('{}S'.format(interval_length), on='time')
     return grouped.apply(mean_price).reset_index()
 
+
 def mean_price(g):
     """ computes size-weighted price of trades """
     vol = g['size'].sum()
-    price = (g['size'] * g['price']).sum() / vol
+    price = (g['size'] * g['price']).sum() / (vol + 1e-8)
     return pd.Series([vol, price], ['volume', 'price'])
