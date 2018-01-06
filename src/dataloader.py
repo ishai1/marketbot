@@ -44,11 +44,10 @@ def windowfy(items, window_length, predict_length):
         cur.popleft()
         cur.append(items[i])
 
-
 def training_inputs(df, window_length=100, predict_length=10):
     return {
         'initial_price': df.price.iloc[0],
-        'features': windowfy(df[['price', 'volume', 'time']].as_matrix()[1:], window_length, predict_length),
+        'features': df[['price', 'volume', 'time']].as_matrix()[1:]
         'outcomes': df['outcomes'].as_matrix()[1 + window_length : -predict_length]
     }
 
