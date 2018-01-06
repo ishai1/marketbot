@@ -23,20 +23,15 @@ class Learner(object):
         self.FLAGS = FLAGS
         self.name = name
 
-        tf.reset_default_graph()
-        self.g = tf.Graph()
-        self.sess = tf.Session(graph=self.g)
-        with self.g.as_default():
-            self.feedforward = CaterpillarNetwork(**ff_params)
-        self.FLAGS = FLAGS
-        self.name = name
-
-    def fit(self, X, t_ix=None, input_seq_len=100, tdelta_predict=10, stride=1):
+    def fit(self, X, y, t_ix=None, input_seq_len=100, tdelta_predict=10, stride=1):
         """
         Parameters
         ----------
         X : pd.DataFrame
             indexed by Timestamp (sorted). Columns are average_price, average_volume observations.
+        y : pd.Series
+            indexed by Timestamp (sorted). Columns are average_price, average_volume observations.
+
         input_seq_len: int
             length of RNN
         tdelta_predict: float
@@ -46,34 +41,27 @@ class Learner(object):
         """
         if t_ix is None:
             t_ix = np.arange(X.shape[0])
-        self.initialize_train_graph(X, t_ix, input_seq_len, tdelta_predict, stride)
+        self.example_generator = GrabSequence(X, t_ix, input_seq_len, tdelta_predict, stride=stride)
+        self.initialize_train_graph(self.example_generator)
         self.train(self.FLAGS.n_epochs)
 
-    def initialize_train_graph(self, X, t_ix, input_seq_len, tdelta_predict, stride):
-        """
-        Create training graph.
-        Parameters
-        ----------
-        X : numpy.array
-            description
-        t_ix : numpy.array
-            description
-        input_seq_len: int
-            description
-        tdelta_predict: float
-            description
-        stride: int
-            description
+    def initialize_train_graph(self):
 
-        """
-        dim_X = X.shape[1]
-        example_generator = GrabSequence(X, t_ix, input_seq_len, tdelta_predict, stride=stride)
+        assert self.example_generator is not None
+
+        tf.reset_default_graph()
+        self.g = tf.Graph()
+        self.sess = tf.Session(graph=self.g)
+        with self.g.as_default():
+            self.feedforward = CaterpillarNetwork(**self.ff_params)
+        dim_X = self.example_generator.dim_X
+        dim_y = self.example_generator.dim_y
         with self.g.as_default():
             with tf.variable_scope(self.name):
-                train_ds = tf.data.Dataset.from_generator(example_generator,
+                train_ds = tf.data.Dataset.from_generator(self.example_generator,
                                                           (tf.float32, tf.float32),
                                                           (tf.TensorShape([None, dim_X]),
-                                                           tf.TensorShape([dim_X])))
+                                                           tf.TensorShape([dim_y])))
                 train_ds.shuffle(buffer_size=100000)
                 train_ds = train_ds.batch(self.FLAGS.batch_size)
                 iterator = tf.data.Iterator.from_structure(train_ds.output_types,
