@@ -14,17 +14,11 @@ def get_data(path, interval_length=1, window_length=100, stride_length=1, predic
     df['time'] = pd.to_datetime(df['time'])
     agg_df = discretize(df, interval_length)
 
-    agg_df.volume = agg_df.volume.fillna(0.0)
     agg_df.price = agg_df.price.fillna(method='ffill')
     agg_df['change'] = agg_df.price.pct_change()
     agg_df['outcomes'] = agg_df.price.pct_change(periods= predict_length).shift(-predict_length)
-
-    return {
-        'initial_price': agg_df.price.iloc[0],
-        'features': windowfy(agg_df[['time', 'volume', 'change']].as_matrix(), window_length, predict_length),
-        'outcomes': agg_df['outcomes'].as_matrix()[window_length:-predict_length]
-    }
-
+    
+    return agg_df 
 
 def discretize(df, interval_length):
     """ interval_length = number of seconds to aggregate in """
@@ -37,9 +31,12 @@ def discretize(df, interval_length):
 
 def mean_price(g):
     """ computes size-weighted price of trades """
-    vol = g['size'].sum()
-    price = (g['size'] * g['price']).sum() / (vol + 1e-8)
-    return pd.Series([vol, price], ['volume', 'price'])
+    total_volume = g.volume.sum()
+    if total_volume:
+        price = (g.volume * g.price).sum() / total_volume 
+    else:
+        price = None
+    return pd.Series([total_volume, price], ['volume', 'price'])
 
 def windowfy(items, window_length, predict_length):
     """ creates a generator for rolling window of features """
