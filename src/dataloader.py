@@ -22,7 +22,7 @@ def get_data(path, interval_length=1, window_length=100, stride_length=1, predic
     return {
         'initial_price': agg_df.price.iloc[0],
         'features': windowfy(agg_df[['time', 'volume', 'change']].as_matrix(), window_length, predict_length),
-        'outcomes': agg_df['outcomes'].as_matrix()[window_length + predict_length : ]
+        'outcomes': agg_df['outcomes'].as_matrix()[window_length:-predict_length]
     }
 
 
