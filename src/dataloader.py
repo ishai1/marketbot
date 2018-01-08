@@ -18,10 +18,11 @@ def get_data(path, interval_length, predict_length):
     agg_df.price = agg_df.price.fillna(method='ffill')
     agg_df['change'] = agg_df.price.pct_change()
 
-    outcomes  = agg_df.price.pct_change(periods=predict_length).as_matrix()[11:]
+    outcomes  = agg_df.price.pct_change(periods=predict_length).as_matrix()[predict_length + 1:]
     features = agg_df[['volume', 'price', 'change']].as_matrix()[1:]
 
     return features, outcomes
+
 
 def discretize(df, interval_length):
     """ interval_length = number of seconds to aggregate in """
@@ -36,26 +37,46 @@ def mean_price(g):
     """ computes size-weighted price of trades """
     total_volume = g.volume.sum()
     if total_volume:
-        price = (g.volume * g.price).sum() / total_volume 
+        price = (g.volume * g.price).sum() / total_volume
     else:
         price = None
     return pd.Series([total_volume, price], ['volume', 'price'])
 
-def window_gen(features, outcomes, window_length, predict_length):
-    """ creates a generator for rolling window of features """
 
-    cur = deque(features[:window_length, [0, 2]])
-    last_price = cur[-1][1] 
+class WindowGen(object):
+    def __init__(self, features, outcomes, window_length, predict_length, Y_n_categories):
+        """
+            creates a generator for rolling window of features
+        """
+        self.features = features
+        self.outcomes = outcomes
+        self.window_length = window_length
+        self.predict_length = predict_length
+        self.dim_X = 2
+        self.dim_Y = outcomes.shape[1]
+        self.Y_n_categories = int(Y_n_categories)
 
-    for i in range(window_length, len(features) - predict_length):
-        yield [cur, outcomes[i], last_price]
-        cur.popleft()
-        cur.append(features[i, [0, 2]])
-        last_price = features[i, 1]
+    def __call__(self):
+        features = self.features
+        outcomes = self.outcomes
+        window_length = self.window_length
+        predict_length = self.predict_length
+
+        cur = deque(features[:window_length, [0, 2]])
+        last_price = np.squeeze(cur[-1][1])
+        assert np.shape(last_price) == ()
+        for i in range(window_length, len(features) - predict_length):
+            yield (cur, np.squeeze(last_price), outcomes[i,:])
+            cur.popleft()
+            cur.append(features[i, [0, 2]])
+            last_price = features[i, 1]
+
 
 def main(path='data/data.csv', predict_length=10, interval_length=1, window_length=100):
     features, outcomes = get_data(path, interval_length, predict_length)
-    return window_gen(features, quantize(outcomes), window_length, predict_length)
+    gen = WindowGen(features, quantize(outcomes), window_length, predict_length)
+    return gen
+
 
 def quantize(items, amin=-0.01, amax=0.01, step=1e-5):
     return np.digitize(np.clip(items, amin, amax), np.arange(amin, amax, step))
