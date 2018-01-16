@@ -1,6 +1,7 @@
 # Stock Price Prediction.
 
-The goal of this project is to predict stock price using historical trade data.
+The goal of this project is to predict stock price using historical trade data,
+and to get experience using the `tensorflow.estimator` API.
 
 The features of a trade are `size`, `price`, `side`, and `time`.
 
