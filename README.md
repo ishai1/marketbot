@@ -25,7 +25,9 @@ get a prediction. In training, we use rolling windows of size one hundred in ord
 increase the number of training samples we have and reduce bias. 
 
 This project is still being actively developed, and has not been tested on all
-systems. 
+systems. Ongoing work is in providing more hand crafted features to combine with
+our LSTM prediction into the dense layer, as well as developing more
+suitable loss functions than mean squaured error. 
 
 # Datasets
 
