@@ -7,7 +7,7 @@ The features of a trade are `size`, `price`, `side`, and `time`.
 
 ![img](./images/price_plot.png)
 
-![img](./images/size_plot.png)
+![img](./images/volume_plot.png)
 
 
 The raw data which is collected from the websocket comes at irregular timestamps,
@@ -18,6 +18,14 @@ interval weighted by the size of the trade, and we drop the `side`.
 Next, in order to normalize our inputs, we calculate the feature `pct_change`
 from `price`, which is just given by change(t+1) = p(t+1) / p(t).
 
+![img](./images/change_plot.png)
+
+The model architecture is an LSTM RNN, whose output is fed into a dense layer to
+get a prediction. In training, we use rolling windows of size one hundred in order to
+increase the number of training samples we have and reduce bias. 
+
+This project is still being actively developed, and has not been tested on all
+systems. 
 
 # Datasets
 
