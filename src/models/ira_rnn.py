@@ -38,26 +38,19 @@ def rnn_model_fn(features, labels, mode, params):
     lstm_stack = tf.nn.rnn_cell.MultiRNNCell(
         [lstm_layer_fn() for _ in range(params['stack_size'])])
 
-    if 'initial_state' in params:
-        initial_state = params['initial_state']
-    else:
-        initial_state = None
-
     lstm_out, _ = tf.nn.dynamic_rnn(cell=lstm_stack,
                                     inputs=features,
-                                    initial_state=initial_state,
                                     dtype=tf.float32)
 
     if mode == ModeKeys.TRAIN:
-        predictions = tf.layers.dense(
-            inputs=tf.squeeze(lstm_out[:, -1, :]),
-            units=1,
-            activation=params['dense_activation'])
+        dense_input =  tf.squeeze(lstm_out[:, 1, :])
     else:
-        predictions = tf.layers.dense(
-            tf.squeeze(lstm_out),
-            units=1,
-            activation=params['dense_activation'])
+        dense_input = tf.squeeze(lstm_out)
+
+    predictions = tf.layers.dense(
+        inputs=dense_input,
+        units=1,
+        activation=params['dense_activation'])
 
     if mode == ModeKeys.PREDICT:
         return tf.estimator.EstimatorSpec(
