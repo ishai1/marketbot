@@ -4,6 +4,8 @@ model definition for LSTM
 import tensorflow as tf
 import numpy as np
 
+tf.logging.set_verbosity(tf.logging.INFO)
+
 ModeKeys = tf.estimator.ModeKeys
 
 DEFAULT_TRAIN_PARAMS = {
@@ -17,10 +19,14 @@ DEFAULT_MODEL_PARAMS = {
     'layer_size': 20,
     'lstm_activation': tf.nn.relu,
     'dense_activation': tf.nn.relu,
-    'loss': tf.losses.mean_squared_error
+    'loss': tf.losses.mean_squared_error,
+    'learning_rate': 0.01
 }
 
+
 MODEL_OUTPUT_DIR = 'trained_models'
+
+
 def rnn_model_fn(features, labels, mode, params):
     """
     features has shape (batch, seq_length, num_features)
@@ -43,7 +49,7 @@ def rnn_model_fn(features, labels, mode, params):
                                     dtype=tf.float32)
 
     if mode == ModeKeys.TRAIN:
-        dense_input =  tf.squeeze(lstm_out[:, 1, :])
+        dense_input = tf.squeeze(lstm_out[:, 1, :])
     else:
         dense_input = tf.squeeze(lstm_out)
 
@@ -132,5 +138,5 @@ def __main__(path='data/clean/data.csv'):
     predict_input_fn = input_fn_wrapper(path, 'infer', 10, {})
     rnn.predict(input_fn=predict_input_fn)
 
-if __name__ == '__main__':
+if __name__ == '__mainagraph = tf.get_default_graph()_':
     __main__()
