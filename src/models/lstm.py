@@ -37,12 +37,13 @@ def rnn_model_fn(features, labels, mode, params):
     initial weights,
     """
 
-    lstm_layer_fn = lambda: tf.nn.rnn_cell.BasicLSTMCell(
+    lstm_layer_fn = lambda name: tf.nn.rnn_cell.BasicLSTMCell(
         params['layer_size'],
-        activation=params['lstm_activation'])
+        activation=params['lstm_activation'], 
+        name=name)
 
     lstm_stack = tf.nn.rnn_cell.MultiRNNCell(
-        [lstm_layer_fn() for _ in range(params['stack_size'])])
+        [lstm_layer_fn('rnn_{}'.format(i)) for i in range(params['stack_size'])])
 
     lstm_out, _ = tf.nn.dynamic_rnn(cell=lstm_stack,
                                     inputs=features,
