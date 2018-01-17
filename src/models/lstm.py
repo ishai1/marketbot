@@ -10,7 +10,7 @@ ModeKeys = tf.estimator.ModeKeys
 
 DEFAULT_TRAIN_PARAMS = {
     'window': 100,
-    'num_epochs': 100,
+    'num_epochs': 1000,
     'batch_size': 10
 }
 
@@ -18,40 +18,44 @@ DEFAULT_MODEL_PARAMS = {
     'lstm_activation': tf.nn.relu,
     'dense_activation': tf.nn.relu,
     'loss': tf.losses.mean_squared_error,
-    'learning_rate': 0.01,
-    'layer_sizes': [20, 40, 80]
+    'learning_rate': 0.001,
+    'layer_sizes': [20, 40, 80],
+    'optimizer': tf.train.AdamOptimizer
 }
 
 
 MODEL_OUTPUT_DIR = 'trained_models'
 
 
-def rnn_model_fn(features, labels, mode, params):
+def _rnn_model_fn(features, labels, mode, params):
+
+    # LSTM cell builder function
     lstm_layer_fn = lambda size: tf.nn.rnn_cell.BasicLSTMCell(
         size,
         activation=params['lstm_activation'])
 
+    # Stack LSTM cells
     lstm_stack = tf.nn.rnn_cell.MultiRNNCell(
         [lstm_layer_fn(i) for i in params['layer_sizes']])
 
+    # Feed forward through stacked LSTM
     lstm_out, _ = tf.nn.dynamic_rnn(cell=lstm_stack,
                                     inputs=features,
                                     dtype=tf.float32)
 
-    if mode == ModeKeys.TRAIN:
-        dense_input = tf.squeeze(lstm_out[:, -1, :])
-    else:
-        dense_input = tf.squeeze(lstm_out)
-
-    predictions = tf.layers.dense(
-        inputs=dense_input,
+    # Feed lstm output through dense layer to get prediction
+    dense_out = tf.layers.dense(
+        inputs=lstm_out,
         units=1,
-        activation=params['dense_activation'])
+        activation=params['dense_activation'],
+        name='dense')
+
+    predictions = tf.squeeze(dense_out)
 
     if mode == ModeKeys.PREDICT:
-        return tf.estimator.EstimatorSpec(mode=mode,
-                                          predictions={"ages": predictions})
-
+        return tf.estimator.EstimatorSpec(
+            mode=mode,
+            predictions={"predictions": predictions})
 
     loss = params['loss'](predictions, labels)
     optimizer = params['optimizer'](learning_rate=params['learning_rate'])
@@ -63,24 +67,26 @@ def rnn_model_fn(features, labels, mode, params):
                                       train_op=train_op)
 
 
-def input_fn_wrapper(path, mode, horizon, train_params=None):
-    def input_fn():
+def _input_fn_wrapper(path, mode, horizon, train_params=None):
+    def _input_fn():
         data = _read_csv_to_tensor(path)
         if mode == ModeKeys.TRAIN:
-            input_fn = _train_input(data, horizon, **train_params)
+            data = _train_input(data, horizon, **train_params)
         elif mode == ModeKeys.EVAL:
-            input_fn =  _eval_input(data, horizon)
+            data = _eval_input(data, horizon)
         else:
-            input_fn = _predict_input(data)
+            data = _predict_input(data)
+        return data
+    return _input_fn
 
-    return input_fn
 
+def _train_input(data, horizon, num_epochs, batch_size, window):
+    targets = _pct_change(data[:, 1], horizon)
+    data = tf.concat([data[:-horizon], tf.reshape(targets, [-1, 1])], axis=1)
+    data = _rolling_windows(data, window)
 
-def _train_input_fn(data, horizon, num_epochs, batch_size, window):
-    targets = _pct_change(data[:, 1], horizon)[window - 1:]
-    features = _rolling_windows(data, window)[:-horizon]
-
-    dataset = tf.data.Dataset.from_tensor_slices((features, targets))
+    dataset = tf.data.Dataset.from_tensor_slices(
+        (data[:, :, :-1], data[:, :, -1]))
     dataset = dataset.shuffle(10000)
     dataset = dataset.batch(batch_size)
     dataset = dataset.repeat(num_epochs)
@@ -89,7 +95,8 @@ def _train_input_fn(data, horizon, num_epochs, batch_size, window):
 
 def _eval_input(data, horizon):
     targets = _pct_change(data[:, 1], horizon)
-    return tf.reshape(data, [1, -1, 3]), tf.reshape(targets, [1, -1])
+    data = data[:horizon]
+    return tf.reshape(data[:horizon], [1, -1, 3]), tf.reshape(targets, [1, -1])
 
 def _predict_input(data):
     return tf.reshape(data, [1, -1, 3])
@@ -101,26 +108,23 @@ def _pct_change(feature_col, horizon):
     return tf.div(feature_col[horizon:], feature_col[: -horizon]) - 1
 
 def _read_csv_to_tensor(path):
-    data = np.genfromtxt(path, delimiter=',')[2:, 1:]
+    data = np.genfromtxt(path, delimiter=',')[2:, [1, 3]]
     return tf.convert_to_tensor(data, dtype=tf.float32)
 
 
-def __main__(path='data/clean/data.csv'):
-    rnn = tf.estimator.Estimator(model_fn=rnn_model_fn,
+def __main__(train_path='data/clean/data3.csv', eval_path='data/clean/data.csv'):
+    rnn = tf.estimator.Estimator(model_fn=_rnn_model_fn,
                                  params=DEFAULT_MODEL_PARAMS,
                                  model_dir=MODEL_OUTPUT_DIR)
 
-    train_input_fn = input_fn_wrapper(path,
-                                      ModeKeys.TRAIN,
-                                      10,
-                                      DEFAULT_TRAIN_PARAMS)
+    train_input_fn = _input_fn_wrapper(train_path,
+                                       ModeKeys.TRAIN,
+                                       10,
+                                       DEFAULT_TRAIN_PARAMS)
     rnn.train(input_fn=train_input_fn)
 
-    eval_input_fn = input_fn_wrapper(path, ModeKeys.EVAL, 10)
+    eval_input_fn = _input_fn_wrapper(eval_path, ModeKeys.EVAL, 10)
     rnn.evaluate(input_fn=eval_input_fn)
-
-    predict_input_fn = input_fn_wrapper(path, ModeKeys.PREDICT, 10)
-    rnn.predict(input_fn=predict_input_fn)
 
 if __name__ == '__main__':
     __main__()
