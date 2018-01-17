@@ -15,12 +15,11 @@ DEFAULT_TRAIN_PARAMS = {
 }
 
 DEFAULT_MODEL_PARAMS = {
-    'stack_size': 3,
-    'layer_size': 20,
     'lstm_activation': tf.nn.relu,
     'dense_activation': tf.nn.relu,
     'loss': tf.losses.mean_squared_error,
-    'learning_rate': 0.01
+    'learning_rate': 0.01,
+    'layer_sizes': [20, 40, 80]
 }
 
 
@@ -29,28 +28,23 @@ MODEL_OUTPUT_DIR = 'trained_models'
 
 def rnn_model_fn(features, labels, mode, params):
     """
-    features has shape (batch, seq_length, num_features)
-    labels has shape (batch, 1)
-    required params:
-    layer_size, activation, stack_size, window_length,
-    optional params:
-    initial weights,
+        features: tensor of shape (batch, seq_length, num_features)
+        labels: tensor of  shape (batch, 1)
     """
 
-    lstm_layer_fn = lambda name: tf.nn.rnn_cell.BasicLSTMCell(
-        params['layer_size'],
-        activation=params['lstm_activation'], 
-        name=name)
+    lstm_layer_fn = lambda size: tf.nn.rnn_cell.BasicLSTMCell(
+        size,
+        activation=params['lstm_activation'])
 
     lstm_stack = tf.nn.rnn_cell.MultiRNNCell(
-        [lstm_layer_fn('rnn_{}'.format(i)) for i in range(params['stack_size'])])
+        [lstm_layer_fn(i) for i in params['layer_sizes']])
 
     lstm_out, _ = tf.nn.dynamic_rnn(cell=lstm_stack,
                                     inputs=features,
                                     dtype=tf.float32)
 
     if mode == ModeKeys.TRAIN:
-        dense_input = tf.squeeze(lstm_out[:, 1, :])
+        dense_input = tf.squeeze(lstm_out[:, -1, :])
     else:
         dense_input = tf.squeeze(lstm_out)
 
@@ -60,9 +54,8 @@ def rnn_model_fn(features, labels, mode, params):
         activation=params['dense_activation'])
 
     if mode == ModeKeys.PREDICT:
-        return tf.estimator.EstimatorSpec(
-            mode=mode,
-            predictions={"ages": predictions})
+        return tf.estimator.EstimatorSpec(mode=mode,
+                                          predictions={"ages": predictions})
 
 
     loss = params['loss'](predictions, labels)
@@ -75,13 +68,13 @@ def rnn_model_fn(features, labels, mode, params):
                                       train_op=train_op)
 
 
-def input_fn_wrapper(path, mode, horizon, train_params):
+def input_fn_wrapper(path, mode, horizon, train_params=None):
     """
         mode        | output shape
         ------------|-------------
         'train'     | (batch_size, window, feature_dim), (batch_size,)
-        'eval'      | (dataset_size, feature_dim)
-        'predict'   | (dataset_size, feature_dim)
+        'eval'      | (1, dataset_size, feature_dim)
+        'predict'   | (1, dataset_size, feature_dim)
     """
     data = _read_csv_to_tensor(path)
     if mode == ModeKeys.TRAIN:
@@ -91,7 +84,7 @@ def input_fn_wrapper(path, mode, horizon, train_params):
     else:
         input_fn = _predict_input_fn(data)
 
-    return input_fn
+    return lambda: input_fn
 
 
 def _train_input_fn(data, horizon, num_epochs, batch_size, window):
@@ -102,17 +95,15 @@ def _train_input_fn(data, horizon, num_epochs, batch_size, window):
     dataset = dataset.shuffle(10000)
     dataset = dataset.batch(batch_size)
     dataset = dataset.repeat(num_epochs)
-
-    iterator = dataset.make_one_shot_iterator()
-    return iterator.get_next
+    return dataset
 
 
 def _eval_input_fn(data, horizon):
     targets = _pct_change(data[:, 1], horizon)
-    return lambda: (tf.reshape(data, [1, -1, 3]), tf.reshape(targets, [1, -1]))
+    return tf.reshape(data, [1, -1, 3]), tf.reshape(targets, [1, -1])
 
 def _predict_input_fn(data):
-    return lambda: tf.reshape(data, [1, -1, 3])
+    return tf.reshape(data, [1, -1, 3])
 
 def _rolling_windows(data, window):
     return tf.contrib.signal.frame(data, window, 1, axis=0)
@@ -130,13 +121,16 @@ def __main__(path='data/clean/data.csv'):
                                  params=DEFAULT_MODEL_PARAMS,
                                  model_dir=MODEL_OUTPUT_DIR)
 
-    train_input_fn = input_fn_wrapper(path, 'train', 10, DEFAULT_TRAIN_PARAMS)
+    train_input_fn = input_fn_wrapper(path,
+                                      ModeKeys.TRAIN,
+                                      10,
+                                      DEFAULT_TRAIN_PARAMS)
     rnn.train(input_fn=train_input_fn)
 
-    eval_input_fn = input_fn_wrapper(path, 'eval', 10, {})
+    eval_input_fn = input_fn_wrapper(path, ModeKeys.EVAL, 10)
     rnn.evaluate(input_fn=eval_input_fn)
 
-    predict_input_fn = input_fn_wrapper(path, 'infer', 10, {})
+    predict_input_fn = input_fn_wrapper(path, ModeKeys.PREDICT, 10)
     rnn.predict(input_fn=predict_input_fn)
 
 if __name__ == '__mainagraph = tf.get_default_graph()_':
