@@ -27,11 +27,6 @@ MODEL_OUTPUT_DIR = 'trained_models'
 
 
 def rnn_model_fn(features, labels, mode, params):
-    """
-        features: tensor of shape (batch, seq_length, num_features)
-        labels: tensor of  shape (batch, 1)
-    """
-
     lstm_layer_fn = lambda size: tf.nn.rnn_cell.BasicLSTMCell(
         size,
         activation=params['lstm_activation'])
@@ -69,22 +64,16 @@ def rnn_model_fn(features, labels, mode, params):
 
 
 def input_fn_wrapper(path, mode, horizon, train_params=None):
-    """
-        mode        | output shape
-        ------------|-------------
-        'train'     | (batch_size, window, feature_dim), (batch_size,)
-        'eval'      | (1, dataset_size, feature_dim)
-        'predict'   | (1, dataset_size, feature_dim)
-    """
-    data = _read_csv_to_tensor(path)
-    if mode == ModeKeys.TRAIN:
-        input_fn = _train_input_fn(data, horizon, **train_params)
-    elif mode == ModeKeys.EVAL:
-        input_fn = _eval_input_fn(data, horizon)
-    else:
-        input_fn = _predict_input_fn(data)
+    def input_fn():
+        data = _read_csv_to_tensor(path)
+        if mode == ModeKeys.TRAIN:
+            input_fn = _train_input(data, horizon, **train_params)
+        elif mode == ModeKeys.EVAL:
+            input_fn =  _eval_input(data, horizon)
+        else:
+            input_fn = _predict_input(data)
 
-    return lambda: input_fn
+    return input_fn
 
 
 def _train_input_fn(data, horizon, num_epochs, batch_size, window):
@@ -98,11 +87,11 @@ def _train_input_fn(data, horizon, num_epochs, batch_size, window):
     return dataset
 
 
-def _eval_input_fn(data, horizon):
+def _eval_input(data, horizon):
     targets = _pct_change(data[:, 1], horizon)
     return tf.reshape(data, [1, -1, 3]), tf.reshape(targets, [1, -1])
 
-def _predict_input_fn(data):
+def _predict_input(data):
     return tf.reshape(data, [1, -1, 3])
 
 def _rolling_windows(data, window):
@@ -133,5 +122,5 @@ def __main__(path='data/clean/data.csv'):
     predict_input_fn = input_fn_wrapper(path, ModeKeys.PREDICT, 10)
     rnn.predict(input_fn=predict_input_fn)
 
-if __name__ == '__mainagraph = tf.get_default_graph()_':
+if __name__ == '__main__':
     __main__()
