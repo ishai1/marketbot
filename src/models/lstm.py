@@ -4,8 +4,6 @@ model definition for LSTM
 import tensorflow as tf
 import numpy as np
 
-tf.logging.set_verbosity(tf.logging.INFO)
-
 ModeKeys = tf.estimator.ModeKeys
 
 DEFAULT_TRAIN_PARAMS = {
@@ -28,7 +26,6 @@ MODEL_OUTPUT_DIR = 'trained_models'
 
 
 def _rnn_model_fn(features, labels, mode, params):
-
     # LSTM cell builder function
     lstm_layer_fn = lambda size: tf.nn.rnn_cell.BasicLSTMCell(
         size,
@@ -108,23 +105,31 @@ def _pct_change(feature_col, horizon):
     return tf.div(feature_col[horizon:], feature_col[: -horizon]) - 1
 
 def _read_csv_to_tensor(path):
-    data = np.genfromtxt(path, delimiter=',')[2:, [1, 3]]
+    data = np.genfromtxt(path, delimiter=',')[2:, 1:]
     return tf.convert_to_tensor(data, dtype=tf.float32)
 
 
-def __main__(train_path='data/clean/data3.csv', eval_path='data/clean/data.csv'):
+def estimator(params=None, model_dir=None):
+    if not params:
+        params = DEFAULT_MODEL_PARAMS
+    if not model_dir:
+        model_dir = MODEL_OUTPUT_DIR
     rnn = tf.estimator.Estimator(model_fn=_rnn_model_fn,
-                                 params=DEFAULT_MODEL_PARAMS,
-                                 model_dir=MODEL_OUTPUT_DIR)
+                                 params=params,
+                                 model_dir=model_dir)
+    return rnn
 
-    train_input_fn = _input_fn_wrapper(train_path,
+def train(rnn, path):
+    train_input_fn = _input_fn_wrapper(path,
                                        ModeKeys.TRAIN,
                                        10,
                                        DEFAULT_TRAIN_PARAMS)
     rnn.train(input_fn=train_input_fn)
 
-    eval_input_fn = _input_fn_wrapper(eval_path, ModeKeys.EVAL, 10)
+def evaluate(rnn, path):
+    eval_input_fn = _input_fn_wrapper(path, ModeKeys.EVAL, 10)
     rnn.evaluate(input_fn=eval_input_fn)
 
-if __name__ == '__main__':
-    __main__()
+def main():
+    rnn = estimator()
+    train(rnn, 'data/clean/data3.csv')
