@@ -96,7 +96,7 @@ def _eval_input(data, horizon):
     return tf.expand_dims(data, axis=0), tf.expand_dims(targets, axis=0)
 
 def _predict_input(data):
-    return tf.reshape(data, [1, -1, 3])
+    return tf.expand_dims(data, axis=1)
 
 def _rolling_windows(data, window):
     return tf.contrib.signal.frame(data, window, 1, axis=0)
