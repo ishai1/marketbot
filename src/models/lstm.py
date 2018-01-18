@@ -14,7 +14,7 @@ DEFAULT_TRAIN_PARAMS = {
 
 DEFAULT_MODEL_PARAMS = {
     'lstm_activation': tf.nn.relu,
-    'dense_activation': tf.nn.relu,
+    'dense_activation': None,
     'loss': tf.losses.mean_squared_error,
     'learning_rate': 0.001,
     'layer_sizes': [20, 40, 80],
@@ -28,17 +28,14 @@ MODEL_OUTPUT_DIR = 'trained_models'
 def _rnn_model_fn(features, labels, mode, params):
     # LSTM cell builder function
     lstm_layer_fn = lambda size: tf.nn.rnn_cell.BasicLSTMCell(
-        size,
-        activation=params['lstm_activation'])
+        size, activation=params['lstm_activation'])
 
     # Stack LSTM cells
     lstm_stack = tf.nn.rnn_cell.MultiRNNCell(
         [lstm_layer_fn(i) for i in params['layer_sizes']])
 
     # Feed forward through stacked LSTM
-    lstm_out, _ = tf.nn.dynamic_rnn(cell=lstm_stack,
-                                    inputs=features,
-                                    dtype=tf.float32)
+    lstm_out, _ = tf.nn.dynamic_rnn(cell=lstm_stack, inputs=features, dtype=tf.float32)
 
     # Feed lstm output through dense layer to get prediction
     dense_out = tf.layers.dense(
