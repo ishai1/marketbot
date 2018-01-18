@@ -47,7 +47,7 @@ def _rnn_model_fn(features, labels, mode, params):
         activation=params['dense_activation'],
         name='dense')
 
-    predictions = tf.squeeze(dense_out)
+    predictions = tf.squeeze(dense_out, axis=-1)
 
     if mode == ModeKeys.PREDICT:
         return tf.estimator.EstimatorSpec(
@@ -92,8 +92,8 @@ def _train_input(data, horizon, num_epochs, batch_size, window):
 
 def _eval_input(data, horizon):
     targets = _pct_change(data[:, 1], horizon)
-    data = data[:horizon]
-    return tf.reshape(data[:horizon], [1, -1, 3]), tf.reshape(targets, [1, -1])
+    data = data[:-horizon]
+    return tf.expand_dims(data, axis=0), tf.expand_dims(targets, axis=0)
 
 def _predict_input(data):
     return tf.reshape(data, [1, -1, 3])
