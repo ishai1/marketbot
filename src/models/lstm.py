@@ -16,7 +16,7 @@ DEFAULT_MODEL_PARAMS = {
     'lstm_activation': tf.nn.relu,
     'dense_activation': None,
     'loss': tf.losses.mean_squared_error,
-    'learning_rate': 0.001,
+    'learning_rate': 0.01,
     'layer_sizes': [20, 40, 80],
     'optimizer': tf.train.AdamOptimizer
 }
@@ -27,8 +27,11 @@ MODEL_OUTPUT_DIR = 'trained_models'
 
 def _rnn_model_fn(features, labels, mode, params):
     # LSTM cell builder function
+    prices = features[:, :, 1]
+
     lstm_layer_fn = lambda size: tf.nn.rnn_cell.BasicLSTMCell(
         size, activation=params['lstm_activation'])
+
 
     # Stack LSTM cells
     lstm_stack = tf.nn.rnn_cell.MultiRNNCell(
@@ -51,14 +54,38 @@ def _rnn_model_fn(features, labels, mode, params):
             mode=mode,
             predictions={"predictions": predictions})
 
-    loss = params['loss'](predictions, labels)
+    loss = tf.reduce_mean(params['loss'](predictions, labels))
     optimizer = params['optimizer'](learning_rate=params['learning_rate'])
     train_op = optimizer.minimize(
         loss=loss, global_step=tf.train.get_global_step())
 
+    # eval matric ops
+    predictions_and_prices = tf.stack([predictions, prices], axis=2)
+    pnl_fn = lambda t: tf.cond(
+        t[0] > t[1],
+        true_fn=lambda: (-1., 1 / t[1]),
+        false_fn=lambda: (1., -1 / t[1]))
+
+    account_movement = tf.map_fn(
+        lambda w: tf.map_fn(pnl_fn, w, dtype=(tf.float32, tf.float32)),
+        predictions_and_prices,
+        dtype=(tf.float32, tf.float32))
+
+    weights = tf.stack([tf.ones([tf.shape(prices)[0]]), prices[:, -1]], axis=1)
+
+    pnl = tf.reduce_sum(
+        weights * tf.transpose(account_movement),
+        axis=1)
+
+    eval_metric_ops = {
+        'pnl': tf.metrics.mean(pnl)
+    }
+
+
     return tf.estimator.EstimatorSpec(mode=mode,
                                       loss=loss,
-                                      train_op=train_op)
+                                      train_op=train_op,
+                                      eval_metric_ops=eval_metric_ops)
 
 
 def _input_fn_wrapper(path, mode, horizon, train_params=None):
@@ -93,7 +120,7 @@ def _eval_input(data, horizon):
     return tf.expand_dims(data, axis=0), tf.expand_dims(targets, axis=0)
 
 def _predict_input(data):
-    return tf.expand_dims(data, axis=1)
+    return tf.expand_dims(data, axis=0)
 
 def _rolling_windows(data, window):
     return tf.contrib.signal.frame(data, window, 1, axis=0)
