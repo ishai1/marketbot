@@ -12,9 +12,9 @@ The raw data has the following features:
 |side		| whether the traded was executed by a buyer or seller |
 |time 		| the time at which the trade was executed 
 
-![img](./images/price_plot.png =250x250)
+![img](./images/price_plot.png)
 
-![img](./images/volume_plot.png =250x250)
+![img](./images/volume_plot.png)
 
 
 The raw data which is collected from the websocket comes at irregular time
@@ -27,7 +27,7 @@ interval weighted by the size of the trade, and we drop the `side`.
 Next, in order to normalize our inputs, we calculate the feature `change`
 from `price`, which is just given by change(t+1) = p(t+1) / p(t).
 
-![img](./images/change_plot.png =250x250)
+![img](./images/change_plot.png)
 
 Our goal is to predict the percent change in price at some `horizon` - 
 by default we use a 10 second horizon.  
