@@ -67,31 +67,15 @@ def _rnn_model_fn(features, labels, mode, params):
     reg_loss = tf.contrib.layers.apply_regularization(regularizer, kernels)
 
     optimizer = params['optimizer'](learning_rate=params['learning_rate'])
-    train_op = optimizer.minimize(
-        loss=loss+reg_loss, global_step=tf.train.get_global_step())  #  + reg_loss
+    train_op = optimizer.minimize(loss=loss + reg_loss, global_step=tf.train.get_global_step())
 
-    # eval matric ops
-    predictions_and_prices = tf.stack([predictions, prices], axis=2)
-    pnl_fn = lambda t: tf.cond(
-        t[0] > t[1],
-        true_fn=lambda: (-1., 1 / t[1]),
-        false_fn=lambda: (1., -1 / t[1]))
-
-    account_movement = tf.map_fn(
-        lambda w: tf.map_fn(pnl_fn, w, dtype=(tf.float32, tf.float32)),
-        predictions_and_prices,
-        dtype=(tf.float32, tf.float32))
-
-    weights = tf.stack([tf.ones([tf.shape(prices)[0]]), prices[:, -1]], axis=1)
-
-    pnl = tf.reduce_sum(
-        weights * tf.transpose(account_movement),
-        axis=1)
+    x = tf.squeeze(predictions)
+    y = tf.squeeze(prices)
+    pnl = tf.where(x > y, -1 + 1.0 / y, 1 - 1.0 / y)
 
     eval_metric_ops = {
         'pnl': tf.metrics.mean(pnl)
     }
-
     return tf.estimator.EstimatorSpec(mode=mode,
                                       loss=loss,
                                       train_op=train_op,
@@ -174,5 +158,5 @@ def evaluate(rnn, path):
 def main():
     rnn = estimator()
     for i in range(100):
-        train(rnn, 'data/clean/data3.csv', steps=1000)
+        train(rnn, 'data/clean/data3.csv', steps=200)
         evaluate(rnn, 'data/clean/data.csv')
