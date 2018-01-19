@@ -13,14 +13,14 @@ DEFAULT_TRAIN_PARAMS = {
 }
 
 DEFAULT_MODEL_PARAMS = {
-    'lstm_activation': tf.nn.relu,
+    'lstm_activation': tf.nn.tanh,
     'dense_activation': None,
     'loss': tf.losses.mean_squared_error,
     'learning_rate': 0.01,
-    'layer_sizes': [20, 40, 80],
+    'layer_sizes': [10, 10, 10],
     'optimizer': tf.train.AdamOptimizer,
-    'scale_l1': 1e-7,
-    'scale_l2': 1e-7
+    'scale_l1': 1e-3,
+    'scale_l2': 1e-3
 
 }
 
@@ -47,8 +47,9 @@ def _rnn_model_fn(features, labels, mode, params):
         inputs=lstm_out,
         units=1,
         activation=params['dense_activation'],
-        name='dense',
-        kernel_initializer=tf.keras.initializers.glorot_uniform())
+        name='dense'# ,
+        # kernel_initializer=tf.keras.initializers.glorot_uniform()
+    )
 
     predictions = tf.squeeze(dense_out, axis=-1)
 
@@ -67,7 +68,7 @@ def _rnn_model_fn(features, labels, mode, params):
 
     optimizer = params['optimizer'](learning_rate=params['learning_rate'])
     train_op = optimizer.minimize(
-        loss=loss + reg_loss, global_step=tf.train.get_global_step())
+        loss=loss+reg_loss, global_step=tf.train.get_global_step())  #  + reg_loss
 
     # eval matric ops
     predictions_and_prices = tf.stack([predictions, prices], axis=2)
