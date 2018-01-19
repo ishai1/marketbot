@@ -62,7 +62,7 @@ def _rnn_model_fn(features, labels, mode, params):
     # eval matric ops
     predictions_and_prices = tf.stack([predictions, prices], axis=2)
     pnl_fn = lambda t: tf.cond(
-        t[0] > t[1],
+        t[0] > 0,
         true_fn=lambda: (-1., 1 / t[1]),
         false_fn=lambda: (1., -1 / t[1]))
 
