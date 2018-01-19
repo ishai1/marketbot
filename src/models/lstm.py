@@ -152,7 +152,7 @@ def train(rnn, path):
 
 def evaluate(rnn, path):
     eval_input_fn = _input_fn_wrapper(path, ModeKeys.EVAL, 10)
-    rnn.evaluate(input_fn=eval_input_fn)
+    rnn.evaluate(input_fn=eval_input_fn, steps=1)
 
 def main():
     rnn = estimator()
