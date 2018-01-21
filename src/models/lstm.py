@@ -16,7 +16,7 @@ DEFAULT_MODEL_PARAMS = {
     'lstm_activation': tf.nn.relu,
     'dense_activation': None,
     'loss': tf.losses.mean_squared_error,
-    'learning_rate': 0.01,
+    'learning_rate': 0.001,
     'layer_sizes': [20, 40, 80],
     'optimizer': tf.train.AdamOptimizer
 }
