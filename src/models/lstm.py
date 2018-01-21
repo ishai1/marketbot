@@ -13,12 +13,14 @@ DEFAULT_TRAIN_PARAMS = {
 }
 
 DEFAULT_MODEL_PARAMS = {
-    'lstm_activation': tf.nn.relu,
+    'lstm_activation': tf.nn.tanh,
     'dense_activation': None,
     'loss': tf.losses.mean_squared_error,
-    'learning_rate': 0.01,
-    'layer_sizes': [20, 40, 80],
-    'optimizer': tf.train.AdamOptimizer
+    'learning_rate': 0.001,
+    'layer_sizes': [10, 10, 10],
+    'optimizer': tf.train.AdamOptimizer,
+    'scale_l1': 1e-3,
+    'scale_l2': 1e-3
 }
 
 
@@ -54,10 +56,17 @@ def _rnn_model_fn(features, labels, mode, params):
             mode=mode,
             predictions={"predictions": predictions})
 
+    # Compute loss
     loss = tf.reduce_mean(params['loss'](predictions, labels))
+    scale_l1, scale_l2 = params['scale_l1'], params['scale_l2']
+    regularizer = tf.contrib.layers.l1_l2_regularizer(scale_l1, scale_l2)
+    trainables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+    kernels = [v for v in trainables if 'bias' not in v.name]
+    reg_loss = tf.contrib.layers.apply_regularization(regularizer, kernels)
+
     optimizer = params['optimizer'](learning_rate=params['learning_rate'])
     train_op = optimizer.minimize(
-        loss=loss, global_step=tf.train.get_global_step())
+        loss=reg_loss, global_step=tf.train.get_global_step())
 
     # eval matric ops
     predictions_and_prices = tf.stack([predictions, prices], axis=2)
@@ -143,17 +152,19 @@ def estimator(params=None, model_dir=None):
                                  model_dir=model_dir)
     return rnn
 
-def train(rnn, path):
+def train(rnn, path, horizon=10, steps=1000):
     train_input_fn = _input_fn_wrapper(path,
                                        ModeKeys.TRAIN,
-                                       10,
+                                       horizon,
                                        DEFAULT_TRAIN_PARAMS)
-    rnn.train(input_fn=train_input_fn)
+    rnn.train(input_fn=train_input_fn, steps=steps)
 
-def evaluate(rnn, path):
-    eval_input_fn = _input_fn_wrapper(path, ModeKeys.EVAL, 10)
+def evaluate(rnn, path, horizon):
+    eval_input_fn = _input_fn_wrapper(path, ModeKeys.EVAL, horizon)
     rnn.evaluate(input_fn=eval_input_fn, steps=1)
 
-def main():
+def main(horizon):
     rnn = estimator()
-    train(rnn, 'data/clean/data3.csv')
+    for _ in range(1000):
+        train(rnn, 'data/clean/data3.csv', horizon, 1000)
+        evaluate(rnn, 'data/clean/data3.csv', horizon)
