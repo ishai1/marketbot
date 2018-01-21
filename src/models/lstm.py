@@ -13,12 +13,14 @@ DEFAULT_TRAIN_PARAMS = {
 }
 
 DEFAULT_MODEL_PARAMS = {
-    'lstm_activation': tf.nn.relu,
+    'lstm_activation': tf.nn.tanh,
     'dense_activation': None,
     'loss': tf.losses.mean_squared_error,
     'learning_rate': 0.001,
-    'layer_sizes': [20, 40, 80],
-    'optimizer': tf.train.AdamOptimizer
+    'layer_sizes': [10, 10, 10],
+    'optimizer': tf.train.AdamOptimizer,
+    'scale_l1': 1e-3,
+    'scale_l2': 1e-3
 }
 
 
@@ -54,10 +56,17 @@ def _rnn_model_fn(features, labels, mode, params):
             mode=mode,
             predictions={"predictions": predictions})
 
+    # Compute loss
     loss = tf.reduce_mean(params['loss'](predictions, labels))
+    scale_l1, scale_l2 = params['scale_l1'], params['scale_l2']
+    regularizer = tf.contrib.layers.l1_l2_regularizer(scale_l1, scale_l2)
+    trainables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+    kernels = [v for v in trainables if 'bias' not in v.name]
+    reg_loss = tf.contrib.layers.apply_regularization(regularizer, kernels)
+
     optimizer = params['optimizer'](learning_rate=params['learning_rate'])
     train_op = optimizer.minimize(
-        loss=loss, global_step=tf.train.get_global_step())
+        loss=reg_loss, global_step=tf.train.get_global_step())
 
     # eval matric ops
     predictions_and_prices = tf.stack([predictions, prices], axis=2)

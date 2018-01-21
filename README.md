@@ -52,14 +52,15 @@ whose output is fed into a dense layer to get a prediction.
 In training, we use rolling windows of size one hundred in order to
 increase the number of training samples we have and reduce bias. Our training
 loss is mean squared error. Tensorflow uses truncated backpropagation through
-(TBTT) time to update the weights in the graph.
+(TBTT) time to update the weights in the graph. We also add a combination of
+`l1` and `l2` regularization.
 
 # Evaluation 
 
 One hurdle in this model is that mean squared error is not a particurly
 informative loss, in the sense that if our goal is to trade according to some
-strategy using the predictions that our agent makes, then it is difficult to interpret the MSE in a
-meaningful way. 
+strategy using the predictions that our agent makes, 
+then it is difficult to interpret the MSE in a meaningful way. 
 
 A more instructive metric is what is referred to in finance as
 PnL - profit and loss of a trading strategy. The trading strategy we use to
@@ -83,6 +84,12 @@ src="https://latex.codecogs.com/gif.latex?\begin{align*}&space;POS&space;&=&spac
 title="\begin{align*} POS &= \{1 \le i \le S \mid f_i > 0\}\\ NEG &= \{1 \le i
 \le S \mid f_i < 0\}\\ U &= |POS| - |NEG| \\ B&= \sum_{i\in POS} \frac{1}{p_i} -
 \sum_{i\in NEG} \frac{1}{p_i} \end{align}" /></a>)
+
+# Configurable parameters
+ See `src.models.lstm.DEFAULT_MODEL_PARAMS` and
+ `src.models.lstm.DEFAULT_TRAIN_PARAMS` to see the parameters that the model and
+ train function accept.
+
 
 # Datasets
 
