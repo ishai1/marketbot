@@ -77,11 +77,13 @@ one dollar of BTC). If `f` is negative, we do `U = U + 1`, and `B = B - 1/p`
 U + p * final` to calculuate our change in net worth obtained by following the betting
 strategy. 
 
-![equation](https://www.codecogs.com/eqnedit.php?latex=\begin{align*}&space;POS&space;&=&space;\{1&space;\le&space;i&space;\le&space;S&space;\mid&space;f_i&space;>&space;0\}\\&space;NEG&space;&=&space;\{1&space;\le&space;i&space;\le&space;S&space;\mid&space;f_i&space;<&space;0\}\\&space;U&space;&=&space;|POS|&space;-&space;|NEG|&space;\\&space;B&=&space;\sum_{i\in&space;POS}&space;\frac{1}{p_i}&space;-&space;\sum_{i\in&space;NEG}&space;\frac{1}{p_i}&space;\end{align}"
-target="_blank"><img src="https://latex.codecogs.com/gif.latex?\begin{align*}&space;POS&space;&=&space;\{1&space;\le&space;i&space;\le&space;S&space;\mid&space;f_i&space;>&space;0\}\\&space;NEG&space;&=&space;\{1&space;\le&space;i&space;\le&space;S&space;\mid&space;f_i&space;<&space;0\}\\&space;U&space;&=&space;|POS|&space;-&space;|NEG|&space;\\&space;B&=&space;\sum_{i\in&space;POS}&space;\frac{1}{p_i}&space;-&space;\sum_{i\in&space;NEG}&space;\frac{1}{p_i}&space;\end{align}"
+<a
+href="https://www.codecogs.com/eqnedit.php?latex=\begin{align*}&space;POS&space;&=&space;\{1&space;\le&space;i&space;\le&space;S&space;\mid&space;f_i&space;>&space;0\}\\&space;NEG&space;&=&space;\{1&space;\le&space;i&space;\le&space;S&space;\mid&space;f_i&space;<&space;0\}\\&space;U&space;&=&space;|POS|&space;-&space;|NEG|&space;\\&space;B&=&space;\sum_{i\in&space;POS}&space;\frac{1}{p_i}&space;-\sum_{i\in&space;NEG}&space;\frac{1}{p_i&space;}\\&space;pnl&space;&=&space;U&space;&plus;&space;p_{final}&space;*&space;B&space;\end{align}"
+target="_blank"><img
+src="https://latex.codecogs.com/gif.latex?\begin{align*}&space;POS&space;&=&space;\{1&space;\le&space;i&space;\le&space;S&space;\mid&space;f_i&space;>&space;0\}\\&space;NEG&space;&=&space;\{1&space;\le&space;i&space;\le&space;S&space;\mid&space;f_i&space;<&space;0\}\\&space;U&space;&=&space;|POS|&space;-&space;|NEG|&space;\\&space;B&=&space;\sum_{i\in&space;POS}&space;\frac{1}{p_i}&space;-\sum_{i\in&space;NEG}&space;\frac{1}{p_i&space;}\\&space;pnl&space;&=&space;U&space;&plus;&space;p_{final}&space;*&space;B&space;\end{align}"
 title="\begin{align*} POS &= \{1 \le i \le S \mid f_i > 0\}\\ NEG &= \{1 \le i
-\le S \mid f_i < 0\}\\ U &= |POS| - |NEG| \\ B&= \sum_{i\in POS} \frac{1}{p_i} -
-\sum_{i\in NEG} \frac{1}{p_i \\ pnl &= U + p_{final} * B } \end{align})
+\le S \mid f_i < 0\}\\ U &= |POS| - |NEG| \\ B&= \sum_{i\in POS} \frac{1}{p_i}
+-\sum_{i\in NEG} \frac{1}{p_i }\\ pnl &= U + p_{final} * B \end{align}" /></a>
 
 # Configurable parameters
  See `src.models.lstm.DEFAULT_MODEL_PARAMS` and
