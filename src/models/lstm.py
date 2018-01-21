@@ -152,17 +152,19 @@ def estimator(params=None, model_dir=None):
                                  model_dir=model_dir)
     return rnn
 
-def train(rnn, path):
+def train(rnn, path, horizon=10, steps=1000):
     train_input_fn = _input_fn_wrapper(path,
                                        ModeKeys.TRAIN,
-                                       10,
+                                       horizon,
                                        DEFAULT_TRAIN_PARAMS)
-    rnn.train(input_fn=train_input_fn)
+    rnn.train(input_fn=train_input_fn, steps=steps)
 
-def evaluate(rnn, path):
-    eval_input_fn = _input_fn_wrapper(path, ModeKeys.EVAL, 10)
+def evaluate(rnn, path, horizon):
+    eval_input_fn = _input_fn_wrapper(path, ModeKeys.EVAL, horizon)
     rnn.evaluate(input_fn=eval_input_fn, steps=1)
 
-def main():
+def main(horizon):
     rnn = estimator()
-    train(rnn, 'data/clean/data3.csv')
+    for _ in range(1000):
+        train(rnn, 'data/clean/data3.csv', horizon, 1000)
+        evaluate(rnn, 'data/clean/data3.csv', horizon)
