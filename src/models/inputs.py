@@ -20,10 +20,12 @@ def _input_fn_wrapper(path, mode, horizon, train_params=None):
 def _train_input(data, horizon, num_epochs, batch_size, window):
     targets = _pct_change(data[:, 1], horizon)
     data = tf.concat([data[:-horizon], tf.reshape(targets, [-1, 1])], axis=1)
+
     data = _rolling_windows(data, window)
 
     dataset = tf.data.Dataset.from_tensor_slices(
         (data[:, :, :-1], data[:, :, -1]))
+
     dataset = dataset.shuffle(10000)
     dataset = dataset.batch(batch_size)
     dataset = dataset.repeat(num_epochs)
@@ -33,15 +35,21 @@ def _train_input(data, horizon, num_epochs, batch_size, window):
 def _eval_input(data, horizon):
     targets = _pct_change(data[:, 1], horizon)
     data = data[:-horizon]
-    return tf.expand_dims(data, axis=0), tf.expand_dims(targets, axis=0)
+    return tf.data.Dataset.from_tensor_slices((tf.expand_dims(data, axis=0),
+                                               tf.expand_dims(targets, axis=0))).batch(1)
 
 
 def _predict_input(data):
-    return tf.expand_dims(data, axis=0)
+    return tf.data.Dataset.from_tensor_slices(tf.expand_dims(data, axis=0)).batch(1)
 
 
 def _rolling_windows(data, window):
     return tf.contrib.signal.frame(data, window, 1, axis=0)
+
+
+def _log_difference(feature_col, horizon):
+    log_feature = tf.log(feature_col)
+    return log_feature[horizon:] - feature_col[: -horizon]
 
 
 def _pct_change(feature_col, horizon):

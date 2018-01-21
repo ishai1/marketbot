@@ -2,13 +2,14 @@
 model definition for LSTM
 """
 import tensorflow as tf
-from inputs import _input_fn_wrapper
+
+from .inputs import _input_fn_wrapper
 
 ModeKeys = tf.estimator.ModeKeys
 
 DEFAULT_TRAIN_PARAMS = {
     'window': 100,
-    'num_epochs': 1000,
+    'num_epochs': 500,
     'batch_size': 10
 }
 
@@ -47,7 +48,7 @@ def _rnn_model_fn(features, labels, mode, params):
         inputs=lstm_out,
         units=1,
         activation=params['dense_activation'],
-        name='dense'# ,
+        name='dense'  # ,
         # kernel_initializer=tf.keras.initializers.glorot_uniform()
     )
 
@@ -71,7 +72,7 @@ def _rnn_model_fn(features, labels, mode, params):
 
     x = tf.squeeze(predictions)
     y = tf.squeeze(prices)
-    pnl = tf.where(x > y, -1 + 1.0 / y, 1 - 1.0 / y)
+    pnl = tf.where(x > 0, -1 + 1.0 / y, 1 - 1.0 / y)
 
     eval_metric_ops = {
         'pnl': tf.metrics.mean(pnl)
