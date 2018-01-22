@@ -9,7 +9,7 @@ ModeKeys = tf.estimator.ModeKeys
 
 DEFAULT_TRAIN_PARAMS = {
     'window': 100,
-    'num_epochs': 500,
+    'num_epochs': 100,
     'batch_size': 10
 }
 

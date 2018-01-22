@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import os
 
 ModeKeys = tf.estimator.ModeKeys
 
@@ -21,7 +22,7 @@ def _train_input(data, horizon, num_epochs, batch_size, window):
     targets = tf.expand_dims(_pct_change(data[:, 1], horizon), axis=1)
     targets = normalize(targets, name='targets', mode=ModeKeys.TRAIN)
     data = data[:-horizon]  # Remove last horizon observations which lack a corresponding response value
-    data = normalize(data, name='observations')
+    data = normalize(data, name='observations', mode=ModeKeys.TRAIN)
     data = tf.concat([data, targets], axis=1)
 
     data = _rolling_windows(data, window)
@@ -36,7 +37,8 @@ def _train_input(data, horizon, num_epochs, batch_size, window):
 
 def _eval_input(data, horizon):
     targets = _pct_change(data[:, 1], horizon)
-    targets = normalize(targets, name='targets', mode=ModeKeys.EVAL)
+    targets = tf.expand_dims(targets, axis=1)
+    targets = tf.squeeze(normalize(targets, name='targets', mode=ModeKeys.EVAL))
 
     data = data[:-horizon]
     data = normalize(data, name='observations', mode=ModeKeys.EVAL)
@@ -46,6 +48,7 @@ def _eval_input(data, horizon):
 
 
 def _predict_input(data):
+    data = normalize(data, name='observations', mode=ModeKeys.PREDICT)
     return tf.data.Dataset.from_tensor_slices(tf.expand_dims(data, axis=0)).batch(1)
 
 
@@ -72,15 +75,13 @@ def normalize(X, name, mode):
     Apply normalization across axis 0 for variable X.
     Normalization params are collected from scope = name.
     """
-    reuse = tf.AUTO_REUSE if mode == ModeKeys.TRAIN else True
-    with tf.variable_scope('normalize', reuse=reuse):
-        with tf.variable_scope(name, reuse=reuse):
-            if mode == ModeKeys.TRAIN:
-                mu, std = calc_mu_std(X)
-            else:
-                shape = (X.shape[1],)
-                mu = tf.get_variable('mean', shape=shape)
-                std = tf.get_variable('std', shape=shape)
+    with tf.variable_scope(os.path.join('normalize', name)):
+        if mode == ModeKeys.TRAIN:
+            mu, std = calc_mu_std(X)
+        else:
+            shape = (X.shape[1],)
+            mu = tf.get_variable('mean', shape=shape, trainable=False)
+            std = tf.get_variable('std', shape=shape, trainable=False)
     return tf.div(X - mu, std + 1e-8)
 
 
@@ -91,8 +92,8 @@ def calc_mu_std(X):
     """
     mu0, var = tf.nn.moments(X, axes=(0))
     shape = (mu0.shape[0], )
-    mu = tf.get_variable('mean', shape=shape)
+    mu = tf.get_variable('mean', shape=shape, trainable=False)
     mu.assign(mu0)
-    std = tf.get_variable('std', shape=shape)
+    std = tf.get_variable('std', shape=shape, trainable=False)
     std.assign(tf.sqrt(var))
     return mu, std
