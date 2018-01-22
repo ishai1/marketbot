@@ -70,8 +70,10 @@ def _rnn_model_fn(features, labels, mode, params):
     optimizer = params['optimizer'](learning_rate=params['learning_rate'])
     train_op = optimizer.minimize(loss=loss + reg_loss, global_step=tf.train.get_global_step())
 
-    x = tf.squeeze(predictions)
-    y = tf.squeeze(prices)
+    with tf.variable_scope('normalize/targets', reuse=True):
+        std_coeffs = tf.get_variable('std')
+    x = tf.squeeze(predictions) * std_coeffs
+    y = tf.squeeze(prices) * std_coeffs
     pnl = tf.where(x > 0, -1 + 1.0 / y, 1 - 1.0 / y)
 
     eval_metric_ops = {
