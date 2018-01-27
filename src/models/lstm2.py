@@ -75,7 +75,10 @@ def _rnn_model_fn(features, labels, mode, params):
         mu_coeffs = tf.get_variable('mean')
     x = tf.squeeze(predictions) * std_coeffs + mu_coeffs
     y = tf.squeeze(prices) * std_coeffs + mu_coeffs
-    pf_over_y = tf.div(prices[:, -1], y)
+    if mode == ModeKeys.EVAL:
+        pf_over_y = tf.div(y[-1], y)
+    else:
+        pf_over_y = tf.div(y[:, -1], y)
     pnl_vec = tf.where(x > 0, -1 + pf_over_y, 1 - pf_over_y)
     pnl = tf.reduce_sum(pnl_vec, axis=-1)
     eval_metric_ops = {
