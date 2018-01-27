@@ -72,10 +72,12 @@ def _rnn_model_fn(features, labels, mode, params):
 
     with tf.variable_scope('normalize/targets', reuse=True):
         std_coeffs = tf.get_variable('std')
-    x = tf.squeeze(predictions) * std_coeffs
-    y = tf.squeeze(prices) * std_coeffs
-    pnl = tf.where(x > 0, -1 + 1.0 / y, 1 - 1.0 / y)
-
+        mu_coeffs = tf.get_variable('mean')
+    x = tf.squeeze(predictions) * std_coeffs + mu_coeffs
+    y = tf.squeeze(prices) * std_coeffs + mu_coeffs
+    pf_over_y = tf.div(prices[:, -1], y)
+    pnl_vec = tf.where(x > 0, -1 + pf_over_y, 1 - pf_over_y)
+    pnl = tf.reduce_sum(pnl_vec, axis=-1)
     eval_metric_ops = {
         'pnl': tf.metrics.mean(pnl)
     }
