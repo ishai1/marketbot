@@ -70,14 +70,9 @@ def _rnn_model_fn(features, labels, mode, params):
     optimizer = params['optimizer'](learning_rate=params['learning_rate'])
     train_op = optimizer.minimize(loss=loss + reg_loss, global_step=tf.train.get_global_step())
 
-    x = denormalize(predictions, 'targets')
-    y = denormalize(prices, 'targets')
-    if mode == ModeKeys.EVAL:
-        pf_over_y = tf.div(y[-1], y)
-    else:
-        pf_over_y = tf.div(y[:, -1], y)
-    pnl_vec = tf.where(x > 0, -1 + pf_over_y, 1 - pf_over_y)
-    pnl = tf.reduce_sum(pnl_vec, axis=-1)
+    predictions = denormalize(predictions, 'targets')
+    prices = denormalize(prices, 'targets')
+    pnl = get_pnl1(predictions, prices, mode)
     eval_metric_ops = {
         'pnl': tf.metrics.mean(pnl)
     }
@@ -86,6 +81,29 @@ def _rnn_model_fn(features, labels, mode, params):
                                       train_op=train_op,
                                       eval_metric_ops=eval_metric_ops)
 
+def get_pnl2(predictions, prices, mode):
+    if mode == ModeKeys.EVAL:
+        pf_over_price = tf.div(prices[-1], prices)
+    else:
+        pf_over_price = tf.div(pf_over_price[:, -1], prices)
+    pnl_vec = tf.where(predictions > 0, -1 + pf_over_price, 1 - pf_over_price)
+    return tf.reduce_sum(pnl_vec, axis=-1)    
+
+
+def get_pnl1(predictions, prices, mode):
+    predictions_and_prices = tf.stack([predictions, prices], axis=2)
+    pnl_fn = lambda t: tf.cond(
+        t[0] > 0,
+        true_fn=lambda: (-1., 1 / t[1]),
+        false_fn=lambda: (1., -1 / t[1]))
+
+    account_movement = tf.map_fn(
+        lambda w: tf.map_fn(pnl_fn, w, dtype=(tf.float32, tf.float32)),
+        predictions_and_prices,
+        dtype=(tf.float32, tf.float32))
+
+    weights = tf.stack([tf.ones([tf.shape(prices)[0]]), prices[:, -1]], axis=1)
+    return tf.reduce_sum(weights * tf.transpose(account_movement), axis=1)
 
 def estimator(params=None, model_dir=None):
     if not params:
