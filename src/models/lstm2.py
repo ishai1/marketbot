@@ -2,7 +2,7 @@
 model definition for LSTM
 """
 import tensorflow as tf
-
+from .utils import denormalize
 from .inputs import _input_fn_wrapper
 
 ModeKeys = tf.estimator.ModeKeys
@@ -70,11 +70,8 @@ def _rnn_model_fn(features, labels, mode, params):
     optimizer = params['optimizer'](learning_rate=params['learning_rate'])
     train_op = optimizer.minimize(loss=loss + reg_loss, global_step=tf.train.get_global_step())
 
-    with tf.variable_scope('normalize/targets', reuse=True):
-        std_coeffs = tf.get_variable('std')
-        mu_coeffs = tf.get_variable('mean')
-    x = tf.squeeze(predictions) * std_coeffs + mu_coeffs
-    y = tf.squeeze(prices) * std_coeffs + mu_coeffs
+    x = denormalize(predictions, 'targets')
+    y = denormalize(prices, 'targets')
     if mode == ModeKeys.EVAL:
         pf_over_y = tf.div(y[-1], y)
     else:
