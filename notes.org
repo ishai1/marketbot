@@ -1,0 +1,970 @@
+ -*- eval: (progn (pyvenv-workon "ml353_2") (auto-revert-mode 1))-*-
+#+STARTUP: indent
+#+OPTIONS: author:Ishai
+#+TITLE: Market Bot
+#+TODO: TODO IN-PROGRESS WAITING DONE ONGOING WORKING BROKEN
+#+OPTIONS: toc:nil
+
+* Tasks
+
+** TODO Week of Jan 9th
+
+*** Ira
+
+- Determine which price information to add before dense.
+
+- Normalize new data.
+
+- determine validation startegy
+
+- experiment with architecture changes (sequence length, etc.)
+
+
+*** Ishai
+
+- market gym
+
+- help with stuff
+
+- anything else?
+
+
+** DONE Week of Jan 5th
+DEADLINE: <2018-01-05 Fri 10:00>
+
+*** Ishai
+
+**** 
+
+
+*** Ira
+
+**** Preprocess / de-trend
+:PROPERTIES:
+:Effort:   4h
+:END:
+
+***** Goals
+
+Strategy for preprocessing data that filters out 
+
+****** Periodic components
+
+- R stl library?
+
+
+****** Trend
+
+- idea: first difference
+
+- other?
+
+
+****** Bias / Variance (normalization)
+
+- idea: center + scale based on training data
+
+
+****** Other
+
+
+
+***** Refs
+
+- https://robjhyndman.com/papers/icdm2015.pdf
+- stl library
+
+
+
+
+**** Qunatization / loss function
+:PROPERTIES:
+:Effort:   8h
+:END:
+
+***** Goal
+
+Should we be representing loss function as cross ent with logits? 
+
+- According to [[https://github.com/ibab/tensorflow-wavenet/blob/master/wavenet/model.py#L665][wavenet]], yes.
+
+- [[https://github.com/ibab/tensorflow-wavenet/blob/master/wavenet/ops.py#L64][wavenet mu-law]] for quantization
+
+- mu law quantization is applied to both inputs and outputs.
+
+
+* Notes
+
+** Quantization
+
+- Look at how magenta nsynth (others) do it.
+
+
+* Reading
+
+** Future
+
+- [[http://bair.berkeley.edu/blog/2017/07/18/learning-to-learn/][Model agnostic meta-learning blog]]
+
+- [[https://arxiv.org/abs/1606.04474][Learning to learn by gradient descent by gradient descent]]
+
+- [[https://arxiv.org/abs/1611.03824][Learning to Learn without Gradient Descent by Gradient Descent]]
+
+  
+* Aux
+:PROPERTIES:
+:header-args:  :exports none
+:END:
+
+** Load ipython kernel
+
+#+NAME: kernel_name
+bitjamkernel
+
+#+NAME: kernel_name_trim
+#+BEGIN_SRC elisp :var kern=kernel_name :results value
+  (s-trim kern)
+#+END_SRC
+
+#+RESULTS: kernel_name_trim
+: bitjamkernel
+
+
+#+BEGIN_SRC elisp :results value
+  (setenv "LD_LIBRARY_PATH" "/usr/local/cuda/lib64")
+#+END_SRC
+
+#+RESULTS:
+: /usr/local/cuda/lib64
+
+#+NAME: kernel_path
+#+BEGIN_SRC sh :session bitjamsh :results table
+  kernel_dir="/run/user/1000"
+  export XDG_RUNTIME_DIR=$kernel_dir
+
+  echo $XDG_RUNTIME_DIR
+#+END_SRC
+
+#+RESULTS: kernel_path
+|                    |
+| $ $ /run/user/1000 |
+
+Set environment variables.
+#+BEGIN_SRC elisp :var kpath=kernel_path[1,] :results value
+  (setenv "XDG_RUNTIME_DIR" (s-trim (car (cddr (split-string (car kpath) " ")))))
+#+END_SRC
+
+#+RESULTS:
+: /run/user/1000
+
+#+NAME: start_kernel
+#+BEGIN_SRC sh :session bitjamsh :var kern=kernel_name_trim
+  ipython kernel -f $kern.json
+#+END_SRC
+
+
+
+** ipython settings
+:PROPERTIES:
+:header-args: ipython :session bitjamkernel.json :results raw drawer :tangle zftestnn.py :eval never-export
+:END:
+
+#+BEGIN_SRC ipython
+  from pydoc import locate
+  %load_ext autoreload
+  %autoreload 2
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+** slack log in
+
+#+BEGIN_SRC elisp :results none
+  (slack-register-team
+   :name "bettingstrategies"
+   :default t
+   :client-id "ishaikones@gmail.com"
+   :client-secret "barbarboots"
+   :token "xoxs-151077066903-150475549493-300542321955-38e3d5a804"
+   :subscribed-channels '(general))
+#+END_SRC
+
+
+* snippets
+:PROPERTIES:
+:header-args: ipython :session bitjamkernel.json :results raw drawer :tangle zftestnn.py :eval never-export
+:END:
+
+** does something
+
+#+BEGIN_SRC ipython
+  %cd ~/Documents/work/irabitcoin/marketbot
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  import tensorflow as tf
+  tf.reset_default_graph()
+  lstm = locate('src.models.lstm2')
+  # lstm2.__main__()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  lstm.main()
+#+END_SRC
+
+#+BEGIN_SRC ipython
+  predict_input_fn = lstm._input_fn_wrapper('data/clean/data.csv', lstm.ModeKeys.PREDICT, 10, lstm.DEFAULT_TRAIN_PARAMS)
+  rnn = lstm.estimator()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  rnn.predict(input_fn=predict_input_fn)
+#+END_SRC
+
+
+
+** namespace
+
+#+BEGIN_SRC ipython
+  import tensorflow as tf
+  tf.reset_default_graph()
+  sess = tf.InteractiveSession()
+
+  with tf.variable_scope('a'):
+      with tf.variable_scope('b'):
+          v = tf.get_variable('v', initializer=tf.ones(3))
+  with tf.variable_scope('', reuse=True):
+      v2 = tf.get_variable('a/b/v')
+  init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
+  sess.run(init)  
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython :exports both
+  V1 = tf.random_normal((10,3))
+  V2 = tf.get_variable('abc', initializer=V1)
+  with tf.variable_scope('', reuse=True):
+    abc = tf.get_variable('abc', (10,3))
+    abc.assign(tf.ones((10,3)))
+  init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
+  sess.run(init)
+  abc.eval() - V2.eval()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+#+BEGIN_EXAMPLE
+  array([[0., 0., 0.],
+  [0., 0., 0.],
+  [0., 0., 0.],
+  [0., 0., 0.],
+  [0., 0., 0.],
+  [0., 0., 0.],
+  [0., 0., 0.],
+  [0., 0., 0.],
+  [0., 0., 0.],
+  [0., 0., 0.]], dtype=float32)
+#+END_EXAMPLE
+:END:
+
+
+** trying out eager
+
+#+BEGIN_SRC ipython
+  import tensorflow as tf
+  tfe = tf.contrib.eager
+  tfe.enable_eager_execution()
+#+END_SRC
+
+#+BEGIN_SRC ipython
+  import numpy as np
+  A = np.random.randn(5,3)
+  mu, std = tf.nn.normalize_moments(A.shape[0], *tf.nn.moments(tf.cast(A, dtype=tf.float32), axes=0), None)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+
+** Run ira_rnn
+
+#+BEGIN_SRC ipython
+  %cd marketbot
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+  
+#+BEGIN_SRC ipython
+  from importlib import reload
+  import src.models.lstm as lstm
+  reload(lstm)
+  lstm.__main__()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  lstm = locate('src.models.lstm')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+** import_fn
+
+#+BEGIN_SRC ipython
+  from pydoc import locate
+  import tensorflow as tf
+  import numpy as np
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  path = 'marketbot/data/clean/data3.csv'
+  data = np.genfromtxt(path, delimiter=',')[2:, 1:]
+  data.shape
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  : (85985, 3)
+  :END:
+  
+  #+BEGIN_SRC ipython
+  data = tf.convert_to_tensor(data)
+  horizon = 10
+  window = 100
+  targets = data[horizon + window - 1 :, 1] / data[window - 1 : -horizon, 1] - 1
+  features = tf.contrib.signal.frame(data, window, 1, axis=0)[:-horizon, :]
+  tf.data.Dataset.from_tensor_slices({'train': features, 'repsonse':targets})
+#+END_SRC
+
+
+
+
+** setup
+
+*** Load
+
+#+BEGIN_SRC ipython
+  import pandas as pd
+  import os 
+  from datetime import datetime as dt
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+**** ak preprocess
+
+#+BEGIN_SRC ipython
+  from marketbot.src import dataloader
+  agg_df = dataloader.get_data('marketbot/data/data2.csv')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+***** temp
+:PROPERTIES:
+:header-args: :eval never
+:END:
+
+#+BEGIN_SRC ipython
+path='marketbot/data/data2.csv'; interval_length=1; window_length=100; stride_length=1; predict_length=10
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  df = pd.read_csv(path, index_col='sequence')
+  df['time'] = pd.to_datetime(df['time'])
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  def mean_price(g):
+      """ computes size-weighted price of trades """
+      vol = g['volume'].sum()
+      price = (g['volume'] * g['price']).sum() / (vol + 1e-8)
+      return pd.Series([vol, price], ['volume', 'price'])
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+#+BEGIN_SRC ipython
+  def discretize(df, interval_length):
+      """ interval_length = number of seconds to aggregate in """
+      if interval_length == 0:
+          grouped = df.groupby('time')
+      else:
+          grouped = df.resample('{}S'.format(interval_length), on='time')
+      return grouped.apply(mean_price).reset_index()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+#+BEGIN_SRC ipython
+  agg_df = discretize(df, interval_length)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  agg_df['price2'] = np.nan
+  agg_df['volume2'] = np.nan
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+whereever price == 0 we have a missing observation
+#+BEGIN_SRC ipython
+  agg_df.loc[(agg_df.price != 0), "price2"] = agg_df[(agg_df.price != 0)].price
+  agg_df.loc[(agg_df.price != 0), "volume2"] = agg_df[(agg_df.price != 0)].volume
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  agg_df.volume2 = agg_df.volume2.fillna(method='ffill')
+  agg_df.price2 = agg_df.price2.fillna(method='ffill')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  agg_df['change2'] = agg_df.price2.pct_change()
+  agg_df['outcomes2'] = agg_df.price2.pct_change(periods= predict_length).shift(-predict_length)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+
+#+BEGIN_SRC ipython
+  agg_df.volume = agg_df.volume.fillna(0.0)
+  agg_df.price = agg_df.price.fillna(method='ffill')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  agg_df['change'] = agg_df.price.pct_change()
+  agg_df['outcomes'] = agg_df.price.pct_change(periods= predict_length).shift(-predict_length)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+**** original preprocesss
+:PROPERTIES:
+:header-args: :eval never
+:END:
+
+#+BEGIN_SRC ipython
+  df = pd.read_csv('marketbot/data/data2.csv')
+  df['time'] = pd.to_datetime(df.time)
+  df['timestamp'] = df.time.apply(dt.timestamp)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  from matplotlib import pyplot as plt
+  import numpy as np
+  data = df.groupby('timestamp').apply(lambda g: g[['price', 'size']].mean(axis=0))
+  assert np.diff(data.index).min() > 0  # data is sorted
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+*** model config
+
+#+BEGIN_SRC ipython
+  os.chdir('marketbot/src')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  from collections import namedtuple
+  flagdct = {'batch_size': 64,
+             'data_dir': '/tmp/dat/',
+             'hidden_dim': 200,
+             'l1reg_coeff': 1e-10,
+             'l2reg_coeff': 1e-9,
+             # 'l1reg_coeff': 1,
+             # 'l2reg_coeff': 1,
+             'latent_dim': 160,
+             'logdir': '/tmp/log/',
+             'n_epochs': 100000,
+             'n_iterations': 100000,
+             'n_samples_predict': 20,
+             'n_samples_train': 10,
+             'print_every': 1000, 
+             'huber_loss_delta': .1,
+             'use_update_ops': False}  # update_ops control dependency is necessary for batch norm
+  FLAGS = namedtuple('FLAGS',flagdct.keys())(**flagdct)
+  ff_params = dict(dim_hidden=20, rnn_stack_height=3)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+** explore
+
+#+BEGIN_SRC ipython
+  %matplotlib inline
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython :exports both
+  import numpy as np
+  df['logdiffprice'] = np.log(df.price).diff()
+  df[['logdiffprice', 'size', 'timestamp', 'price']].plot(x=['timestamp', 'timestamp'], y=['price', 'logdiffprice'], s=.7, kind='scatter', figsize=(30, 15))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: <matplotlib.axes._subplots.AxesSubplot at 0x7fec4cb0c748>
+[[file:./obipy-resources/8538-rS.png]]
+:END:
+
+#+BEGIN_SRC ipython :exports both
+  from matplotlib import pyplot as plt
+  fig, axes = plt.subplots(2, 1, sharex=True, figsize=(10,10))
+  df[['size', 'timestamp', 'price']].plot(x='timestamp', y='price', s=.7, kind='scatter',
+                                          figsize=(30, 15), ax=axes[0])
+  df[['size', 'timestamp', 'logdiffprice']].plot(x='timestamp', y='logdiffprice', s=.7,
+                                                 kind='scatter', figsize=(30, 15), ax=axes[1])
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: <matplotlib.axes._subplots.AxesSubplot at 0x7fec4c9b1400>
+[[file:./obipy-resources/8538L2Y.png]]
+:END:
+
+
+
+#+BEGIN_SRC ipython :exports both
+  df[['logdiffprice', 'size', 'timestamp']].plot(x='timestamp', y='logdiffprice', figsize=(30, 15))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: <matplotlib.axes._subplots.AxesSubplot at 0x7fec4d75d518>
+[[file:./obipy-resources/8538kXG.png]]
+:END:
+
+#+BEGIN_SRC ipython :exports both
+  fig, axes = plt.subplots(2, 1, sharex=True, figsize=(10,10))
+  for i, col in enumerate(data.columns.values):
+     data.reset_index().plot.scatter(x='timestamp', y=col, ax=axes[i], s=.7)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+[[file:./obipy-resources/19656F3W.png]]
+:END:
+
+#+BEGIN_SRC ipython :exports both
+  from pandas.plotting import scatter_matrix
+  scatter_matrix(data, alpha=0.2, figsize=(6, 6), diagonal='kde')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+#+BEGIN_EXAMPLE
+  array([[<matplotlib.axes._subplots.AxesSubplot object at 0x7f271599bbe0>,
+  <matplotlib.axes._subplots.AxesSubplot object at 0x7f2715aaaeb8>],
+  [<matplotlib.axes._subplots.AxesSubplot object at 0x7f27159c8be0>,
+  <matplotlib.axes._subplots.AxesSubplot object at 0x7f271582e438>]], dtype=object)
+#+END_EXAMPLE
+[[file:./obipy-resources/19656SBd.png]]
+:END:
+
+
+** debug
+
+*** playground
+
+#+BEGIN_SRC ipython
+  import os
+  os.chdir('marketbot')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  import  src.dataloader as dataloader
+  get_data = dataloader.get_data
+  path='data/data2.csv'; predict_length=10; interval_length=1; window_length=100
+  features, outcomes = get_data(path, interval_length, predict_length)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  import src.playground1 as pg
+  h = 10
+  split=.5
+  env = pg.Environment(features, h, split)  
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  tr = env.reset()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython :exports both
+  cur, loss, doneflag, info = env.step(0.0)
+  cur, loss, doneflag, info
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: (array([  3.00000000e-02,   1.31317100e+04,   2.22044605e-16]), 0.0, False, {})
+:END:
+
+#+BEGIN_SRC ipython
+  from importlib import reload
+  reload(pg)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: <module 'src.playground1' from '/home/ishai/Documents/work/irabitcoin/marketbot/src/playground1.py'>
+:END:
+
+
+*** run
+
+**** setup
+
+#+BEGIN_SRC ipython
+  import os
+  os.chdir('marketbot')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+Create input provider
+#+BEGIN_SRC ipython
+  import  src.dataloader as dataloader
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  get_data = dataloader.get_data
+  WindowGen = dataloader.WindowGen
+  quantize = dataloader.quantize
+  path='data/data2.csv'; predict_length=10; interval_length=1; window_length=100
+  features, outcomes = get_data(path, interval_length, predict_length)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  import numpy as np
+  amin=-0.01
+  amax=0.01
+  step=1e-5
+  Y_n_categories = int(np.round((amax-amin)/step))
+#+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  :END:
+
+#+BEGIN_SRC ipython
+  q_outcomes = quantize(outcomes, amin=amin, amax=amax, step=step)
+  q_outcomes = np.expand_dims(q_outcomes, axis=1)
+  gen = WindowGen(features, q_outcomes, window_length, predict_length, Y_n_categories)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython :eval never
+  from importlib import reload
+  reload(dataloader)
+#+END_SRC
+
+#+BEGIN_SRC ipython
+  import marketbot.src.model1.runner as runner
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  from collections import namedtuple
+  flagdct = {'batch_size': 128,
+             'data_dir': '/tmp/dat/',
+             'hidden_dim': 200,
+             'l1reg_coeff': 1e-10,
+             'l2reg_coeff': 1e-9,
+             # 'l1reg_coeff': 1,
+             # 'l2reg_coeff': 1,
+             'latent_dim': 160,
+             'logdir': '/tmp/log/',
+             'n_epochs': 100000,
+             'n_iterations': 100000,
+             'n_samples_predict': 20,
+             'n_samples_train': 10,
+             'print_every': 1000, 
+             'huber_loss_delta': .1,
+             'use_update_ops': False}  # update_ops control dependency is necessary for batch norm
+  FLAGS = namedtuple('FLAGS',flagdct.keys())(**flagdct)
+  ff_params = dict(dim_hidden=20, rnn_stack_height=3)
+
+  catmodel = runner.Learner(ff_params, FLAGS)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  catmodel.initialize_train_graph(gen)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+**** train
+
+#+BEGIN_SRC ipython
+  catmodel.train(100)
+#+END_SRC
+
+#+BEGIN_SRC ipython
+  from importlib import reload
+  reload(runner)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: <module 'marketbot.src.model1.runner' from '/home/ishai/Documents/work/irabitcoin/marketbot/src/model1/runner.py'>
+:END:
+
+
+**** predict
+
+#+BEGIN_SRC ipython
+  
+#+END_SRC
+
+
+*** genertor
+
+#+BEGIN_SRC ipython
+  import utils
+  example_generator = utils.GrabSequence(X=data.values, t_ix=data.index.values, input_seq_len=100, time_gap_to_predict=10, stride=1)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  from importlib import reload
+  reload(utils)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: <module 'utils' from '/home/ishai/Documents/work/bitcoin/IraBC/marketbot/src/catnet/utils.py'>
+:END:
+
+#+BEGIN_SRC ipython
+  import tensorflow as tf
+  tf.reset_default_graph()
+  g = tf.Graph()
+  sess = tf.Session(graph=g)
+  with g.as_default():
+      train_ds = tf.data.Dataset.from_generator(example_generator, (tf.float32, tf.float32),
+                                                (tf.TensorShape([None, 2]), tf.TensorShape([2])))
+      train_ds.shuffle(buffer_size=100000)
+      train_ds = train_ds.batch(100)
+      iterator = tf.data.Iterator.from_structure(train_ds.output_types, train_ds.output_shapes)
+      training_init_op = iterator.make_initializer(train_ds)
+      batch = iterator.get_next()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  with sess.as_default():
+      sess.run(training_init_op)
+      while (True):
+          b = sess.run(batch)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+** run
+
+#+BEGIN_SRC ipython
+  from runner import Learner
+  catmodel = Learner(ff_params, FLAGS)
+  catmodel.fit(data.values, t_ix=data.index.values)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+* Feed
+:PROPERTIES:
+:header-args: ipython :session bitjamkernel.json :results raw drawer :tangle zftestnn.py :eval never-export
+:END:
+
+#+BEGIN_SRC ipython
+  import websockets
+  import json
+  uri_sandbox = 'wss://ws-feed.sandbox.gdax.com'
+  uri_live = 'wss://ws-feed.gdax.com'
+
+  SUBSCRIBE_REQUEST = {
+      "type": "subscribe",
+      "product_ids": [
+          "ETH-BTC",
+      ],
+      "channels": [
+          "level2",
+          "heartbeat",
+          {
+              "name": "ticker",
+              "product_ids": [
+                  "ETH-BTC",
+              ]
+          },
+      ]
+  }
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  async def gdax_connect(_uri):
+      async with websockets.client.connect(_uri) as websocket:
+          await websocket.send(json.dumps(SUBSCRIBE_REQUEST))    
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+#+BEGIN_SRC ipython
+  asyncio.get_event_loop().run_until_complete(gdax_connect(uri_live))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  async def listen()
+#+END_SRC
+
