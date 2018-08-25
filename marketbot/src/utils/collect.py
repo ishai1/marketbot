@@ -1,25 +1,36 @@
 """
     Stream data from gdax to file
 """
-
+import logging
+import requests
+import json
 import asyncio
 import sys
-import json
 import time
 import csv
 import websockets
 import os
+logger = logging.getLogger('websockets')
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler())
 
-URI = 'wss://ws-feed.gdax.com'
+# Gather product ids
+HTTPURI = 'https://api-public.sandbox.pro.coinbase.com/products'
+ret = requests.get(HTTPURI)
+products = json.loads(ret.text)
+logger.info("{} available products".format(len(products)))
+logger.info("Product pairs:\n {}".format([p['id'] for p in products]))
+
+WSURI = 'wss://ws-feed.pro.coinbase.com'
 SUBSCRIBE_REQUEST = {
     'type': 'subscribe',
-    'product_ids': ['BTC-USD'],
+    'product_ids': [p['id'] for p in products],
     'channels': [
         'matches',
         'heartbeat']
 }
 
-COLUMNS = ['time', 'price', 'size']
+COLUMNS = ['time', 'price', 'size', 'product_id']
 NUM_MATCHES = 0
 FILEPATH = None
 
@@ -46,9 +57,12 @@ async def _listen(ws):
             except asyncio.TimeoutError:
                 # No response to ping in 10 seconds, disconnect.
                 break
+        except Exception as e:
+            # No response to ping in 10 seconds, disconnect.
+            # logger.exception("General listener exception")
+            break
         else:
             handle_message(json.loads(msg))
-    return
 
 
 def match_counter():
@@ -70,4 +84,15 @@ def handle_message(msg):
 if __name__ == "__main__":
     time = time.strftime("%Y%m%d-%H%M%S")
     FILEPATH = os.path.join(os.getcwd(), 'data/raw/{}.csv'.format(time))
-    asyncio.get_event_loop().run_until_complete(_connect(URI))
+    loop = asyncio.get_event_loop()
+    try:
+        while True:
+            loop.run_until_complete(_connect(WSURI))
+            # asyncio.ensure_future(_connect(WSURI), loop=loop)
+        
+    finally:
+        loop.close()
+    # try:
+    #     loop.run_forever()
+    # finally:
+    #     loop.close()
