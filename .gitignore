@@ -11,3 +11,4 @@ __pycache__
 # emacs
 *~
 trained_models
+*.csv
