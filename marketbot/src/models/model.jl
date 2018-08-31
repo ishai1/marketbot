@@ -1,4 +1,4 @@
-using Flux: glorot_uniform, zeros, chunk
+using Flux: glorot_uniform, zeros, chunk, LSTM, Dense
 Nin = 15
 Nh = 10 # size of hidden layer
 
