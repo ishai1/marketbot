@@ -2,96 +2,8 @@
 #+STARTUP: indent
 #+OPTIONS: author:Ishai
 #+TITLE: Market Bot
-#+TODO: TODO IN-PROGRESS WAITING DONE ONGOING WORKING BROKEN
+#+TODO: TODO IN-PROGRESS WAITING | DONE | DEPRECATED ABANDONED
 #+OPTIONS: toc:nil
-
-* Tasks
-
-** TODO Week of Jan 9th
-
-*** Ira
-
-- Determine which price information to add before dense.
-
-- Normalize new data.
-
-- determine validation startegy
-
-- experiment with architecture changes (sequence length, etc.)
-
-
-*** Ishai
-
-- market gym
-
-- help with stuff
-
-- anything else?
-
-
-** DONE Week of Jan 5th
-DEADLINE: <2018-01-05 Fri 10:00>
-
-*** Ishai
-
-**** 
-
-
-*** Ira
-
-**** Preprocess / de-trend
-:PROPERTIES:
-:Effort:   4h
-:END:
-
-***** Goals
-
-Strategy for preprocessing data that filters out 
-
-****** Periodic components
-
-- R stl library?
-
-
-****** Trend
-
-- idea: first difference
-
-- other?
-
-
-****** Bias / Variance (normalization)
-
-- idea: center + scale based on training data
-
-
-****** Other
-
-
-
-***** Refs
-
-- https://robjhyndman.com/papers/icdm2015.pdf
-- stl library
-
-
-
-
-**** Qunatization / loss function
-:PROPERTIES:
-:Effort:   8h
-:END:
-
-***** Goal
-
-Should we be representing loss function as cross ent with logits? 
-
-- According to [[https://github.com/ibab/tensorflow-wavenet/blob/master/wavenet/model.py#L665][wavenet]], yes.
-
-- [[https://github.com/ibab/tensorflow-wavenet/blob/master/wavenet/ops.py#L64][wavenet mu-law]] for quantization
-
-- mu law quantization is applied to both inputs and outputs.
-
 
 * Notes
 
@@ -149,13 +61,30 @@ Should we be representing loss function as cross ent with logits?
 
 ** Next Up
 
-*** Currency exchange rates
+*** future
 
-- start with static values
+**** circuit discovery
 
 
+*** current
 
-*** Model of conversion rates
+**** Upload first resutls
+
+
+**** Create test code
+
+
+*** past
+
+**** Examine why first difference fails
+
+- why are there only 0s and very large values in datevalue column?
+
+
+**** Run model on first difference across time
+
+
+**** Model of conversion rates
 
 - Try conv rather than matrix mul
 
@@ -170,7 +99,7 @@ Should we be representing loss function as cross ent with logits?
 - use prediction for q value iteration
 
 
-*** DONE resampling
+**** DONE resampling
 
 - Starts with splines in [[https://github.com/JuliaMath/Interpolations.jl][Interpolatoins.jl]]
 
@@ -184,6 +113,94 @@ Should we be representing loss function as cross ent with logits?
 ** Quantization
 
 - Look at how magenta nsynth (others) do it.
+
+
+** ABANDONED Tasks
+
+*** TODO Week of Jan 9th
+
+**** Ira
+
+- Determine which price information to add before dense.
+
+- Normalize new data.
+
+- determine validation startegy
+
+- experiment with architecture changes (sequence length, etc.)
+
+
+**** Ishai
+
+- market gym
+
+- help with stuff
+
+- anything else?
+
+
+*** DONE Week of Jan 5th
+DEADLINE: <2018-01-05 Fri 10:00>
+
+**** Ishai
+
+***** 
+
+
+**** Ira
+
+***** Preprocess / de-trend
+:PROPERTIES:
+:Effort:   4h
+:END:
+
+****** Goals
+
+Strategy for preprocessing data that filters out 
+
+******* Periodic components
+
+- R stl library?
+
+
+******* Trend
+
+- idea: first difference
+
+- other?
+
+
+******* Bias / Variance (normalization)
+
+- idea: center + scale based on training data
+
+
+******* Other
+
+
+
+****** Refs
+
+- https://robjhyndman.com/papers/icdm2015.pdf
+- stl library
+
+
+
+
+***** Qunatization / loss function
+:PROPERTIES:
+:Effort:   8h
+:END:
+
+****** Goal
+
+Should we be representing loss function as cross ent with logits? 
+
+- According to [[https://github.com/ibab/tensorflow-wavenet/blob/master/wavenet/model.py#L665][wavenet]], yes.
+
+- [[https://github.com/ibab/tensorflow-wavenet/blob/master/wavenet/ops.py#L64][wavenet mu-law]] for quantization
+
+- mu law quantization is applied to both inputs and outputs.
 
 
 * Reading
@@ -229,38 +246,65 @@ marketbot-julia
 #+END_SRC
 
 
+*** Julia Helpers
+:PROPERTIES:
+:header-args: jupyter-julia :session marketbot-julia-ssh.json  :results raw drawer :tangle mbot.jl :eval never-export
+:END:
+
+#+BEGIN_SRC jupyter-julia
+  using Logging
+  LogLevel(Logging.Info)
+  using PyCall
+  """
+  Load a python module from a given absolute path
+  """
+  function pyimport_module(filepath, modulename)
+      local imp = PyCall.pywrap(PyCall.pyimport("imp"))
+      local spec = imp.util[:spec_from_file_location](modulename, filepath)
+      local preloadmod = imp.util[:module_from_spec](spec)
+      spec[:loader][:exec_module](preloadmod)
+      return preloadmod
+  end
+#+END_SRC
+#+RESULTS:
+:RESULTS:
+# Out[1]:
+: pyimport_module
+:END:
+
+
 ** Py Kernel
 
 *** kernel remote - in lan
 
-#+NAME: kernel_name
-marketbot
+#+NAME: pykernel_name
+mbotpy
 
-#+NAME: kernel_name_trim
-#+BEGIN_SRC elisp :var kern=kernel_name :results value
+#+NAME: pykernel_name_trim
+#+BEGIN_SRC elisp :var kern=pykernel_name :results value
   (s-trim kern)
 #+END_SRC
 
-#+RESULTS: kernel_name_trim
-: marketbot
+#+RESULTS: pykernel_name_trim
+: mbotpy
 
-#+BEGIN_SRC sh :session pyssh :results none :var kern=kernel_name_trim
+#+BEGIN_SRC sh :session pyssh :results none :var kern=pykernel_name_trim
   echo "tp2:/run/user/1000/jupyter/$kern.json"
 #+END_SRC
 
-#+BEGIN_SRC sh :session pyssh :results none :var kern=kernel_name_trim
+#+BEGIN_SRC sh :session pyssh :results none :var kern=pykernel_name_trim
   scp "tp2:/run/user/1000/jupyter/$kern.json" "/run/user/1000/jupyter/$kern.json"
 #+END_SRC
 
 
-#+BEGIN_SRC sh :session pyssh :results none :var kern=kernel_name_trim
+#+BEGIN_SRC sh :session pyssh :results none :var kern=pykernel_name_trim
   jupyter console --existing $kern.json --ssh tp2
 #+END_SRC
 
 
 *** ipython settings
 :PROPERTIES:
-:header-args: ipython :session marketbot-ssh.json :results raw drawer :tangle col.py :eval never-export
+:header-args: ipython :session mbotpy-ssh.json :results raw drawer :tangle col.py :eval never-export
 :END:
 
 #+BEGIN_SRC ipython
@@ -278,7 +322,7 @@ marketbot
 
 #+RESULTS:
 :RESULTS:
-# Out[2]:
+# Out[20]:
 :END:
 
 #+BEGIN_SRC ipython :async t
@@ -287,7 +331,7 @@ marketbot
 
 #+RESULTS:
 :RESULTS:
-# Out[3]:
+# Out[21]:
 : 3
 :END:
 
@@ -344,7 +388,7 @@ def decorator_factory(key, value):
 
 ** Julia
 :PROPERTIES:
-:header-args: jupyter-julia :session marketbot-julia-ssh.json :results raw drawer :tangle mbot.jl :eval never-export :kernel julia-0.7 :async t
+:header-args: jupyter-julia :session marketbot-julia-ssh.json  :results raw drawer :tangle mbot.jl :eval never-export :async t
 :END:
 
 *** aux
@@ -360,11 +404,18 @@ def decorator_factory(key, value):
 
 *** preprocess and explore
 
-This part was done in Julia =v0.6.4=
+**** Julia 0.7
+
+# Some of the queryverse commands have changed for 0.7 and won't work here
 
 #+BEGIN_SRC jupyter-julia
   using Queryverse, IndexedTables
 #+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[228]:
+:END:
 
 #+BEGIN_SRC jupyter-julia :results output
   datadir = "/home/ishai/Documents/work/marketbot/src/utils/data/raw"
@@ -373,7 +424,7 @@ This part was done in Julia =v0.6.4=
 
 #+RESULTS:
 :RESULTS:
-total 21M
+total 46M
 -rw-rw-r-- 1 ishai ishai 2.5M Aug 14 00:12 20180813-171152.csv
 -rw-rw-r-- 1 ishai ishai 1.7M Aug 14 02:50 20180814-001303.csv
 -rw-rw-r-- 1 ishai ishai 1.7M Aug 15 03:42 20180815-004411.csv
@@ -381,7 +432,7 @@ total 21M
 -rw-rw-r-- 1 ishai ishai 457K Aug 15 13:46 20180815-131857.csv
 -rw-rw-r-- 1 ishai ishai  14K Aug 15 13:48 20180815-134729.csv
 -rw-rw-r-- 1 ishai ishai 1.1M Aug 15 15:15 20180815-134950.csv
--rw-rw-r-- 1 ishai ishai  13M Aug 16 14:22 20180815-160006.csv
+-rw-rw-r-- 1 ishai ishai  37M Aug 18 01:37 20180815-160006.csv
 :END:
 
 #+BEGIN_SRC jupyter-julia :results output
@@ -391,20 +442,20 @@ total 21M
 
 #+RESULTS:
 :RESULTS:
-2018-08-15T20:00:07.341000Z,289.01000000,0.95307512,ETH-USD
-2018-08-15T20:00:07.878000Z,6383.82000000,0.05064896,BTC-USD
-2018-08-15T20:00:07.878000Z,6383.82000000,0.06453496,BTC-USD
-2018-08-15T20:00:08.441000Z,6383.81000000,1.52758604,BTC-USD
-2018-08-15T20:00:08.441000Z,6383.81000000,1.75478104,BTC-USD
-2018-08-15T20:00:08.441000Z,6383.81000000,0.00118000,BTC-USD
-2018-08-15T20:00:08.441000Z,6383.81000000,0.56368644,BTC-USD
-2018-08-15T20:00:08.441000Z,6383.81000000,0.03650000,BTC-USD
-2018-08-15T20:00:08.441000Z,6383.81000000,0.00810000,BTC-USD
-2018-08-15T20:00:08.441000Z,6383.81000000,0.00380000,BTC-USD
+2018-08-15T20:00:07.341000Z,289.01000000,0.95307512,ETH-USD
+2018-08-15T20:00:07.878000Z,6383.82000000,0.05064896,BTC-USD
+2018-08-15T20:00:07.878000Z,6383.82000000,0.06453496,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,1.52758604,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,1.75478104,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,0.00118000,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,0.56368644,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,0.03650000,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,0.00810000,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,0.00380000,BTC-USD
 :END:
 
 # DateTime does not recognize "2018-08-14T04:13:06.697000Z" so need to adjust string before processing. 
-# Haven't figured out how to correctly use [[https://juliacomputing.com/TextParse.jl/stable/#TextParse.CustomParser][CustomParser]], but it looks like a nice approach to converting.
+# Haven't figured out how to correctly use [[https://juliacomputing.com/TextParse.jl/stable/#TextParse.CustomParser][CustomParser]], but it looks like a reasonable approach to converting.
 #+BEGIN_SRC jupyter-julia :eval never :exports never
 using TextParse
 cDateTime = CustomParser(x->x[1:end-5], DateTime)
@@ -413,19 +464,20 @@ cDateTime = CustomParser(x->x[1:end-5], DateTime)
 # annoying thigns so far - 1.how to set types, 2. not much documentation 
 # Later - set types using TextParse
 #+BEGIN_SRC jupyter-julia
+  using Dates
   colnames = ["date", "price", "size", "product_id"]
   t = load(joinpath(datadir, fname),
            colnames=colnames,
            colparsers=Dict(:date=>String, :price=>Float64, :size=>Float64, :product_id=>String)) |>
-               @map({:date=DateTime(_.date[1:end-5]), _.price, _.size, _.product_id})  |> # cast to DateTime
+               @map({:date=>DateTime(_.date[1:end-5]), _.price, _.size, _.product_id}) |> # cast to DateTime
                table
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
-# Out[5]:
+# Out[231]:
 #+BEGIN_EXAMPLE
-Table with 623229 rows, 4 columns:
+  Table with 623229 rows, 4 columns:
   date                    price    size        product_id
   ───────────────────────────────────────────────────────
   2018-08-15T20:00:07.87  6383.82  0.050649    "BTC-USD"
@@ -453,6 +505,608 @@ Table with 623229 rows, 4 columns:
   2018-08-18T05:37:36.62  14.22    3.35943     "ETC-USD"
   2018-08-18T05:37:37.01  59.88    0.7215      "LTC-USD"
 #+END_EXAMPLE
+:END:
+
+Assign primary keys
+#+BEGIN_SRC jupyter-julia
+  t = table(t, pkey=(:product_id, :date))
+#+END_SRC
+
+Lets check if the data is sorted with in groups.
+#+BEGIN_SRC jupyter-julia
+  a = t |> @groupby(_.product_id, _.date) |> @map({origin=key(_), result=issorted(_)}) |> @map(all(_.result))
+  all(a)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[11]:
+: true
+:END:
+
+This opens a new window
+#+BEGIN_SRC jupyter-julia :eval never
+  t |> Voyager()
+#+END_SRC
+
+[[file:./voyager.png]]
+
+The default view doesn't work for volume (size), lets try line instead
+#+BEGIN_SRC jupyter-julia
+  @time t |> @vlplot(:line, x=:date, y=:size, color="product_id")
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[16]:
+[[file:./obipy-resources/TMY56X.png]]
+:END:
+
+Not that nice. 
+
+# log Time difference counts
+#+BEGIN_SRC jupyter-julia :exports none :eval never
+  tdiff = t |> @filter(_.product_id=="ETH-USD") |> @map(_.date) |> collect |> diff |> @map({delta=_});
+  tdiff |> @map({delta=log(Dates.value(_.delta))}) |> @vlplot(mark={:bar, clip=true}, x={:delta, bin={maxbins=1000}, scale={domain=[0,15], clip=true}}, y={"count()", axis={title="Time-difference counts"}})
+#+END_SRC
+
+Plot time differences between observations
+#+BEGIN_SRC jupyter-julia
+  t |>
+      @groupby(_.product_id) |>
+      @map({product_id=key(_), delta=diff(_.date)}) |>
+      @mapmany(_.delta, {delta=Dates.value(__), product_id=_.product_id}) |> # __ is the individual element in row
+      @filter(_.delta>0) |>
+      @vlplot(mark={:line, clip=true},
+              x={:delta, axis={title="ΔTime"}, bin={maxbins=100000}, scale={domain=[0,10000], clip=true}},
+              y={"count()", axis={title="Counts"}  #, scale={domain=[0,100], clip=true}
+                 },
+              color=:product_id,
+              height=300,
+              width=300)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[136]:
+[[file:./obipy-resources/bvknN0.png]]
+:END:
+
+/log/ time differences (between observations)
+#+BEGIN_SRC jupyter-julia
+  t |>
+      @groupby(_.product_id) |>
+      @map({product_id=key(_), delta=diff(_.date)}) |>
+      @mapmany(_.delta, {delta=__, product_id=_.product_id}) |> # __ is the individual element in row
+      @map({_.product_id, delta=log(Dates.value(_.delta))}) |>
+      @vlplot(mark={:line, clip=true},
+              x={:delta, axis={title="log(ΔTime)"}, bin={maxbins=100}},
+              y={"count()", axis={title="Counts"}, scale={domain=[0,2500], clip=true}},
+              color=:product_id, height=300, width=300)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[34]:
+[[file:./obipy-resources/IT9gre.png]]
+:END:
+
+Irregular signal. Resample to have observations at regular intervals.
+
+Review duplicates:
+
+#+BEGIN_SRC jupyter-julia
+  t |> @groupby((_.product_id, _.date)) |> @map({origin=key(_), Count=length(_)}) |> @filter(_.Count > 1)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[41]:
+#+BEGIN_EXAMPLE
+  ?x2 query result
+  origin                              │ Count
+  ────────────────────────────────────┼──────
+  ("BTC-USD", 2018-08-15T20:00:07.87) │ 2
+  ("BTC-USD", 2018-08-15T20:00:08.44) │ 12
+  ("BTC-USD", 2018-08-15T20:00:08.46) │ 2
+  ("BTC-USD", 2018-08-15T20:00:11.05) │ 6
+  ("ETH-USD", 2018-08-15T20:00:11.2)  │ 2
+  ("BTC-USD", 2018-08-15T20:00:12.16) │ 4
+  ("BTC-USD", 2018-08-15T20:00:12.93) │ 11
+  ("BTC-USD", 2018-08-15T20:00:13.02) │ 2
+  ("BTC-USD", 2018-08-15T20:00:14.43) │ 4
+  ("ETH-EUR", 2018-08-15T20:00:17.29) │ 5
+  ... with more rows
+#+END_EXAMPLE
+:END:
+
+These are due to transactions that are cleared simultaneously.
+
+#+BEGIN_SRC jupyter-julia
+using Statistics
+t = t |> @groupby((_.product_id, _.date)) |> @map({product_id=key(_)[1], date=key(_)[2], price=median(_.price),  size=sum(_.size)}) |> table;
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[234]:
+:END:
+
+#+BEGIN_SRC jupyter-julia :eval never :exports none
+  using Query, Statistics
+  t = @from i in t begin
+      @group i by i.product_id, i.date into g
+      @select {product_id=key(g)[1], date=key(g)[2], price=median(g.price), size=sum(g.size)}
+      @collect table
+  end
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[79]:
+#+BEGIN_EXAMPLE
+  Table with 351419 rows, 4 columns:
+  product_id  date                    price    size
+  ───────────────────────────────────────────────────────
+  "BTC-USD"   2018-08-15T20:00:07.87  6383.82  0.115184
+  "BTC-USD"   2018-08-15T20:00:08.44  6383.81  4.4218
+  "BTC-USD"   2018-08-15T20:00:08.46  6383.58  0.001
+  "BTC-USD"   2018-08-15T20:00:08.48  6383.35  0.00049985
+  "BTC-USD"   2018-08-15T20:00:08.56  6382.54  0.00810663
+  "BTC-USD"   2018-08-15T20:00:08.61  6382.53  0.00105
+  "ETC-USD"   2018-08-15T20:00:09.78  12.11    72.8834
+  "ETH-USD"   2018-08-15T20:00:10.48  289.01   2.1008
+  "BTC-USD"   2018-08-15T20:00:11.05  6374.65  0.197664
+  "ETH-USD"   2018-08-15T20:00:11.2   289.0    0.51067
+  "BTC-USD"   2018-08-15T20:00:12.16  6373.0   2.0
+  "BTC-USD"   2018-08-15T20:00:12.93  6374.29  1.68051
+  ⋮
+  "ETH-USD"   2018-08-18T05:37:24.32  310.85   4.9996
+  "ETC-USD"   2018-08-18T05:37:29.94  14.195   74.6061
+  "ETH-USD"   2018-08-18T05:37:32.6   310.52   11.9
+  "ETH-USD"   2018-08-18T05:37:32.93  310.51   0.0432801
+  "BTC-EUR"   2018-08-18T05:37:33.72  5709.16  0.00409268
+  "ETC-USD"   2018-08-18T05:37:34.41  14.22    137.769
+  "BTC-USD"   2018-08-18T05:37:34.72  6517.65  0.0376063
+  "ETC-USD"   2018-08-18T05:37:35.14  14.19    145.838
+  "BTC-EUR"   2018-08-18T05:37:36.13  5709.16  0.022136
+  "ETC-USD"   2018-08-18T05:37:36.62  14.22    3.35943
+  "LTC-USD"   2018-08-18T05:37:37.01  59.88    0.7215
+#+END_EXAMPLE
+:END:
+
+#+BEGIN_SRC jupyter-julia
+  t |> @groupby((_.product_id, _.date)) |> @map({origin=key(_), Count=length(_)}) |> @filter(_.Count > 1)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[235]:
+#+BEGIN_EXAMPLE
+  0x2 query result
+  origin │ Count
+  ───────┼──────
+#+END_EXAMPLE
+:END:
+
+#+BEGIN_SRC jupyter-julia
+  t |> @vlplot(mark={:line, clip=true},
+               x={:date},
+               y={:price},
+               color=:product_id, height=300, width=300)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[94]:
+[[file:./obipy-resources/0XjhGy.png]]
+:END:
+
+Median time difference:
+#+BEGIN_SRC jupyter-julia
+  meddiff = t |> @groupby(_.product_id, _.date) |> @map({key(_), median(diff(Dates.values(Float64.(_))))}) |> DataFrame
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[151]:
+#+BEGIN_EXAMPLE
+  15×2 DataFrames.DataFrame
+  │ Row │ key     │ _2_     │
+  ├─────┼─────────┼─────────┤
+  │ 1   │ BTC-USD │ 1190.0  │
+  │ 2   │ ETC-USD │ 890.0   │
+  │ 3   │ ETH-USD │ 1780.0  │
+  │ 4   │ ETH-EUR │ 8850.0  │
+  │ 5   │ BCH-USD │ 6360.0  │
+  │ 6   │ LTC-BTC │ 24825.0 │
+  │ 7   │ BTC-EUR │ 5910.0  │
+  │ 8   │ LTC-USD │ 3090.0  │
+  │ 9   │ BTC-GBP │ 15390.0 │
+  │ 10  │ LTC-EUR │ 18665.0 │
+  │ 11  │ ETH-BTC │ 3595.0  │
+  │ 12  │ ETC-EUR │ 29360.0 │
+  │ 13  │ BCH-EUR │ 38610.0 │
+  │ 14  │ ETC-BTC │ 3990.0  │
+  │ 15  │ BCH-BTC │ 16330.0 │
+#+END_EXAMPLE
+:END:
+
+#+BEGIN_SRC jupyter-julia  
+  t = setcol(t, :datevalue, Queryverse.map(r->Dates.value(r.date), t))
+  mindate = minimum(IndexedTables.select(t, :datevalue))
+  t = setcol(t, :datevalue, Queryverse.map(r->r.datevalue-mindate, t))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[236]:
+#+BEGIN_EXAMPLE
+  Table with 351419 rows, 5 columns:
+  product_id  date                    price    size      datevalue
+  ────────────────────────────────────────────────────────────────
+  "BCH-BTC"   2018-08-15T20:01:33.06  0.08126  0.510053  85190
+  "BCH-BTC"   2018-08-15T20:01:49.01  0.08134  0.05258   101140
+  "BCH-BTC"   2018-08-15T20:03:00.63  0.08115  0.01485   172760
+  "BCH-BTC"   2018-08-15T20:10:00.29  0.08101  0.0307    592420
+  "BCH-BTC"   2018-08-15T20:20:23.77  0.08131  2.501     1215900
+  "BCH-BTC"   2018-08-15T20:25:13.06  0.08131  0.5       1505190
+  "BCH-BTC"   2018-08-15T20:31:05.81  0.0812   27.0144   1857940
+  "BCH-BTC"   2018-08-15T20:41:30.33  0.08102  0.04      2482460
+  "BCH-BTC"   2018-08-15T20:45:27.69  0.08084  0.69      2719820
+  "BCH-BTC"   2018-08-15T20:54:51.37  0.08085  1.0       3283500
+  "BCH-BTC"   2018-08-15T20:57:51.63  0.08074  0.05315   3463760
+  "BCH-BTC"   2018-08-15T21:09:15.8   0.08097  0.5       4147930
+  ⋮
+  "LTC-USD"   2018-08-18T05:35:42.38  59.89    4.0926    207334510
+  "LTC-USD"   2018-08-18T05:36:06.07  59.89    2.0       207358200
+  "LTC-USD"   2018-08-18T05:36:15.79  59.88    0.1306    207367920
+  "LTC-USD"   2018-08-18T05:36:22.29  59.88    0.133424  207374420
+  "LTC-USD"   2018-08-18T05:36:24.01  59.89    9.9884    207376140
+  "LTC-USD"   2018-08-18T05:36:34.61  59.89    1.27946   207386740
+  "LTC-USD"   2018-08-18T05:37:02.95  59.89    0.14672   207415080
+  "LTC-USD"   2018-08-18T05:37:05.44  59.89    3.87716   207417570
+  "LTC-USD"   2018-08-18T05:37:15.81  59.89    12.2501   207427940
+  "LTC-USD"   2018-08-18T05:37:24.09  59.89    0.797648  207436220
+  "LTC-USD"   2018-08-18T05:37:37.01  59.88    0.7215    207449140
+#+END_EXAMPLE
+:END:
+
+Lowest median time difference between samples is for BCH-EUR at around 38 seconds between observations. Still, try using .5 second sampling frequency to take advantage of higher frequency signals.
+
+Start and end of interval
+#+BEGIN_SRC jupyter-julia  
+  tstart = minimum(IndexedTables.select(t, :datevalue))
+  tend = maximum(IndexedTables.select(t, :datevalue))
+  sample_points = tstart:500:tend # iterating in milliseconds
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[242]:
+: 0:500:207449000
+:END:
+
+
+#+BEGIN_SRC jupyter-julia :eval never
+  using Dierckx, NamedTuples
+  date_interp(x, y) = Spline1D(x,y; k=2, bc="extrapolate", s=1e-4)(sample_points)
+  date_interp_t(_t) = table(@NT(datevalue=sample_points .- minimum(sample_points), price=date_interp(IndexedTables.select(_t, :datevalue), IndexedTables.select(_t, :price))))
+  # date_interp_t(_t) = date_interp(_t[:datevalue], _t[:price])
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[262]:
+: date_interp_t (generic function with 1 method)
+:END:
+
+#+BEGIN_SRC jupyter-julia
+  using Interpolations, NamedTuples
+  date_interp(x, y) = LinearInterpolation(x,y, extrapolation_bc=Linear())(collect(sample_points))
+  date_interp_t(_t) = table(@NT(datevalue=sample_points .- minimum(sample_points), price=date_interp(IndexedTables.select(table(_t), :datevalue), IndexedTables.select(table(_t), :price))))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[264]:
+: date_interp_t (generic function with 1 method)
+:END:
+
+#+BEGIN_SRC jupyter-julia
+  using StatPlots
+  temp = t |> @filter(_.product_id =="BCH-BTC") |> table |> date_interp_t;
+  temp2 = t |> @filter(_.product_id =="BCH-BTC") |> table;
+  @df temp plot(:datevalue, :price, size=(2000,1000))
+  @df temp2 scatter!(:datevalue, :price, markersize=1)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[265]:
+[[file:./obipy-resources/GHjZ7d.svg]]
+:END:
+
+Apply function across groups and unstack.
+#+BEGIN_SRC jupyter-julia
+  tnew = IndexedTables.groupby(date_interp_t, t, :product_id, flatten=true)
+  tnew = IndexedTables.unstack(table(tnew), :datevalue; variable=:product_id, value=:price)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[267]:
+#+BEGIN_EXAMPLE
+  Table with 414899 rows, 16 columns:
+  Columns:
+  [1m#   [22m[1mcolname    [22m[1mtype[22m
+  ─────────────────────────────────
+  1   datevalue  Int64
+  2   BCH-BTC    DataValue{Float64}
+  3   BCH-EUR    DataValue{Float64}
+  4   BCH-USD    DataValue{Float64}
+  5   BTC-EUR    DataValue{Float64}
+  6   BTC-GBP    DataValue{Float64}
+  7   BTC-USD    DataValue{Float64}
+  8   ETC-BTC    DataValue{Float64}
+  9   ETC-EUR    DataValue{Float64}
+  10  ETC-USD    DataValue{Float64}
+  11  ETH-BTC    DataValue{Float64}
+  12  ETH-EUR    DataValue{Float64}
+  13  ETH-USD    DataValue{Float64}
+  14  LTC-BTC    DataValue{Float64}
+  15  LTC-EUR    DataValue{Float64}
+  16  LTC-USD    DataValue{Float64}
+#+END_EXAMPLE
+:END:
+
+#+BEGIN_SRC jupyter-julia :async t
+  tnew[end-100:end] |> DataFrame |> tail
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[268]:
+#+BEGIN_EXAMPLE
+  6×16 DataFrame. Omitted printing of 9 columns
+  │ Row │ datevalue │ BCH-BTC │ BCH-EUR │ BCH-USD │ BTC-EUR │ BTC-GBP │ BTC-USD │
+  ├─────┼───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+  │ 1   │ 207446500 │ 0.09069 │ 520.15  │ 589.46  │ 5709.16 │ 5251.41 │ 6517.65 │
+  │ 2   │ 207447000 │ 0.09069 │ 520.15  │ 589.46  │ 5709.16 │ 5252.02 │ 6517.65 │
+  │ 3   │ 207447500 │ 0.09069 │ 520.15  │ 589.46  │ 5709.16 │ 5252.63 │ 6517.65 │
+  │ 4   │ 207448000 │ 0.09069 │ 520.15  │ 589.46  │ 5709.16 │ 5253.23 │ 6517.65 │
+  │ 5   │ 207448500 │ 0.09069 │ 520.15  │ 589.46  │ 5709.16 │ 5253.84 │ 6517.65 │
+  │ 6   │ 207449000 │ 0.09069 │ 520.15  │ 589.46  │ 5709.16 │ 5254.44 │ 6517.65 │
+#+END_EXAMPLE
+:END:
+
+#+BEGIN_SRC jupyter-julia
+  showcols(DataFrame(tnew))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[22]:
+#+BEGIN_EXAMPLE
+  16×5 DataFrame
+  │ Row │ variable  │ eltype  │ nmissing │ first     │ last       │
+  ├─────┼───────────┼─────────┼──────────┼───────────┼────────────┤
+  │ 1   │ datevalue │ Float64 │          │ 6.367e13  │ 6.36703e13 │
+  │ 2   │ BCH-BTC   │ Float64 │ 0        │ 0.0808327 │ 0.09069    │
+  │ 3   │ BCH-EUR   │ Float64 │ 0        │ 458.773   │ 520.15     │
+  │ 4   │ BCH-USD   │ Float64 │ 0        │ 519.021   │ 589.46     │
+  │ 5   │ BTC-EUR   │ Float64 │ 0        │ 5622.95   │ 5709.16    │
+  │ 6   │ BTC-GBP   │ Float64 │ 0        │ 5050.2    │ 5254.44    │
+  │ 7   │ BTC-USD   │ Float64 │ 0        │ 6383.82   │ 6517.65    │
+  │ 8   │ ETC-BTC   │ Float64 │ 0        │ 0.00191   │ 0.00217    │
+  │ 9   │ ETC-EUR   │ Float64 │ 0        │ 10.757    │ 12.4522    │
+  │ 10  │ ETC-USD   │ Float64 │ 0        │ 12.11     │ 14.2251    │
+  │ 11  │ ETH-BTC   │ Float64 │ 0        │ 0.0451994 │ 0.04781    │
+  │ 12  │ ETH-EUR   │ Float64 │ 0        │ 254.655   │ 273.216    │
+  │ 13  │ ETH-USD   │ Float64 │ 0        │ 289.046   │ 310.391    │
+  │ 14  │ LTC-BTC   │ Float64 │ 0        │ 0.0087506 │ 0.00915569 │
+  │ 15  │ LTC-EUR   │ Float64 │ 0        │ 49.328    │ 52.4154    │
+  │ 16  │ LTC-USD   │ Float64 │ 0        │ 56.0264   │ 59.8801    │
+#+END_EXAMPLE
+:END:
+
+#+BEGIN_SRC jupyter-julia
+  sum(isnan.(IndexedTables.select(tnew, :datevalue)))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[269]:
+: 0
+:END:
+
+Replace missing + mandatory column wise vs row wise comparison:
+
+#+BEGIN_SRC jupyter-julia :async t :results output
+  using Query
+  dfnew = tnew |> DataFrame
+  @time for i in size(dfnew)[1]-1:-1:1
+      for c in 1:size(dfnew)[2]
+          if isnan(dfnew[i,c])
+              dfnew[i,c] = dfnew[i+1,c]
+          end
+      end
+  end  
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+  2.476500 seconds (16.17 M allocations: 367.061 MiB, 52.51% gc time)
+:END:
+
+#+BEGIN_SRC jupyter-julia :async t :results output
+  using Query
+  dfnew = tnew |> DataFrame
+  @time for c in 1:size(dfnew)[2]
+      for i in size(dfnew)[1]-1:-1:1
+          if isnan(dfnew[i,c])
+              dfnew[i,c] = dfnew[i+1,c]
+          end
+      end
+  end  
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+  1.876617 seconds (26.94 M allocations: 512.453 MiB, 23.32% gc time)
+:END:
+
+No more nulls
+#+BEGIN_SRC jupyter-julia
+  tnew |> @map(isnan.(values(_))) |> table |> columns |> @map(sum(_)) |> maximum
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[270]:
+: 0
+:END:
+
+Save
+#+BEGIN_SRC jupyter-julia
+  # tnew |> save("postproc2.feather")
+  tnew |> save("postproc2.csv")
+#+END_SRC
+
+
+Annoyingly, there is some non-negligible loss in precision after saving the data
+#+BEGIN_SRC jupyter-julia
+  df = load("postproc2.csv") |> DataFrame
+  println(sum((convert(Array{Float64}, DataFrame(tnew)) .- convert(Array{Float64}, df)).^2, 1))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+[3.04944 2.56476e-30 3.36042e-25 1.9387e-25 4.96308e-24 8.27181e-24 1.65436e-24 2.37737e-33 2.54644e-27 2.22143e-27 8.44039e-31 2.488e-25 2.55263e-25 6.31163e-32 4.29645e-26 3.1302e-26]
+┌ Warning: `sum(a::AbstractArray, dims)` is deprecated, use `sum(a, dims=dims)` instead.
+│   caller = top-level scope at In[108]:1
+└ @ Core In[108]:1
+:END:
+
+/3.04944/ - sum of squares for datevalue is non-negligible. Maybe because saved as csv or because originally used float64 for dateavalue.
+
+#+BEGIN_SRC jupyter-julia
+  maximum(diff(df[:datevalue])), minimum(diff(df[:datevalue]))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[149]:
+: (500.015625, 499.984375)
+:END:
+
+Probably should have converted it to Int64
+
+#+BEGIN_SRC jupyter-julia
+maximum(diff(convert(Array{Float64}, df), 1)[:,2:end], 1)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[157]:
+#+BEGIN_EXAMPLE
+  1×15 Array{Float64,2}:
+  0.000302757  2.05052  1.69563  23.0194  …  1.11495  2.0e-5  0.208  0.164176
+#+END_EXAMPLE
+:END:
+
+Can probably use a better smoothing approach here.
+
+
+Using Feather api directly seems to work
+#+BEGIN_SRC jupyter-julia
+  using Feather
+  Feather.write("postproc3.feather", DataFrame(tnew))
+#+END_SRC
+
+#+BEGIN_SRC jupyter-julia
+  load("postproc3.feather") |> @map(isnan.(values(_))) |> table |> columns |> @map(sum(_)) |> maximum
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[285]:
+: 0
+:END:
+
+#+BEGIN_SRC jupyter-julia :results output
+  df = load("postproc3.feather") |> DataFrame
+  println(sum((convert(Array{Float64}, DataFrame(tnew)) .- convert(Array{Float64}, df)).^2, 1))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+[0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0]
+┌ Warning: `sum(a::AbstractArray, dims)` is deprecated, use `sum(a, dims=dims)` instead.
+│   caller = top-level scope at In[289]:2
+└ @ Core In[289]:2
+:END:
+
+Thats better...
+
+
+**** Julia =v0.6.4=
+
+#+BEGIN_SRC jupyter-julia
+  using Queryverse, IndexedTables
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[20]:
+:END:
+
+#+BEGIN_SRC jupyter-julia :results output
+  datadir = "/home/ishai/Documents/work/marketbot/src/utils/data/raw"
+  run(`ls -lh $(datadir)`)
+#+END_SRC
+
+#+BEGIN_SRC jupyter-julia :results output
+  fname = maximum(readdir(datadir))
+  run(`head $(joinpath(datadir, fname))`)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+2018-08-15T20:00:07.341000Z,289.01000000,0.95307512,ETH-USD
+2018-08-15T20:00:07.878000Z,6383.82000000,0.05064896,BTC-USD
+2018-08-15T20:00:07.878000Z,6383.82000000,0.06453496,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,1.52758604,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,1.75478104,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,0.00118000,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,0.56368644,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,0.03650000,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,0.00810000,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,0.00380000,BTC-USD
+:END:
+
+# DateTime does not recognize "2018-08-14T04:13:06.697000Z" so need to adjust string before processing. 
+# Haven't figured out how to correctly use [[https://juliacomputing.com/TextParse.jl/stable/#TextParse.CustomParser][CustomParser]], but it looks like a reasonable approach to converting.
+#+BEGIN_SRC jupyter-julia :eval never :exports never
+using TextParse
+cDateTime = CustomParser(x->x[1:end-5], DateTime)
+#+END_SRC
+
+# annoying thigns so far - 1.how to set types, 2. not much documentation 
+# Later - set types using TextParse
+#+BEGIN_SRC jupyter-julia
+  using Dates
+  colnames = ["date", "price", "size", "product_id"]
+  t = load(joinpath(datadir, fname),
+           colnames=colnames,
+           colparsers=Dict(:date=>String, :price=>Float64, :size=>Float64, :product_id=>String)) |>
+               @map({:date=>DateTime(_.date[1:end-5]), _.price, _.size, _.product_id}) |> # cast to DateTime
+               table
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+0 - 0549e442-50a5-410e-a486-a56e7c159722
 :END:
 
 Assign primary keys
@@ -500,8 +1154,7 @@ Not that nice.
 
 #+RESULTS:
 :RESULTS:
-# Out[214]:
-[[file:./obipy-resources/tVVUQm.png]]
+0 - eeea6df9-5b4d-4c64-abdf-c588a79e6276
 :END:
 
 Plot time differences between observations
@@ -578,6 +1231,9 @@ These are due to transactions that are cleared simultaneously.
 
 #+BEGIN_SRC jupyter-julia
 t = t |> @groupby((_.product_id, _.date)) |> @map({product_id=_.key[1], date=_.key[2], price=median(_..price),  size=sum(_..size)}) |> table;
+#+END_SRC
+
+#+BEGIN_SRC jupyter-julia
 t |> @groupby((_.product_id, _.date)) |> @map({origin=_.key, Count=length(_)}) |> @filter(_.Count > 1)
 #+END_SRC
 
@@ -860,164 +1516,452 @@ Save to feather
 #+END_SRC
 
 
-
-*** Batch generator
+*** Batch generator - for julia models
 
 This part is done in =v0.7.1= inorder to future proof use of generator.
-
-Load feather
 #+BEGIN_SRC jupyter-julia
-  using DataFrames, Feather
-  df = Feather.read("postproc.feather") |> DataFrame
+  using Logging
+  LogLevel(Logging.Info)
+  using DataFrames, Queryverse
+  df = load("postproc3.feather") |> DataFrame
+  delete!(df, :datevalue)
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
-# Out[28]:
+# Out[5]:
 #+BEGIN_EXAMPLE
-  414899×16 DataFrame. Omitted printing of 10 columns
-  │ Row    │ datevalue  │ BCH-BTC   │ BCH-EUR │ BCH-USD │ BTC-EUR │ BTC-GBP │
-  ├────────┼────────────┼───────────┼─────────┼─────────┼─────────┼─────────┤
-  │ 1      │ 6.367e13   │ 0.0808327 │ 458.773 │ 519.021 │ 5622.95 │ 5050.2  │
-  │ 2      │ 6.367e13   │ 0.0808352 │ 458.752 │ 519.019 │ 5622.95 │ 5050.2  │
-  │ 3      │ 6.367e13   │ 0.0808377 │ 458.732 │ 519.017 │ 5622.95 │ 5050.2  │
-  │ 4      │ 6.367e13   │ 0.0808402 │ 458.711 │ 519.016 │ 5622.95 │ 5050.2  │
-  │ 5      │ 6.367e13   │ 0.0808427 │ 458.69  │ 519.014 │ 5622.95 │ 5050.2  │
-  │ 6      │ 6.367e13   │ 0.0808453 │ 458.669 │ 519.012 │ 5622.95 │ 5050.2  │
-  │ 7      │ 6.367e13   │ 0.0808478 │ 458.649 │ 519.01  │ 5622.95 │ 5050.2  │
-  │ 8      │ 6.367e13   │ 0.0808503 │ 458.628 │ 519.009 │ 5622.95 │ 5050.2  │
-  │ 9      │ 6.367e13   │ 0.0808528 │ 458.607 │ 519.007 │ 5622.95 │ 5050.2  │
-  │ 10     │ 6.367e13   │ 0.0808553 │ 458.587 │ 519.005 │ 5622.95 │ 5050.2  │
-  │ 11     │ 6.367e13   │ 0.0808578 │ 458.566 │ 519.004 │ 5622.95 │ 5050.2  │
+  414899×15 DataFrame. Omitted printing of 9 columns
+  │ Row    │ BCH-BTC   │ BCH-EUR │ BCH-USD │ BTC-EUR │ BTC-GBP │ BTC-USD │
+  ├────────┼───────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+  │ 1      │ 0.0808327 │ 458.773 │ 519.021 │ 5622.95 │ 5050.2  │ 6383.82 │
+  │ 2      │ 0.0808352 │ 458.752 │ 519.019 │ 5622.95 │ 5050.2  │ 6383.81 │
+  │ 3      │ 0.0808377 │ 458.732 │ 519.017 │ 5622.95 │ 5050.2  │ 6381.69 │
+  │ 4      │ 0.0808402 │ 458.711 │ 519.016 │ 5622.95 │ 5050.2  │ 6380.07 │
+  │ 5      │ 0.0808427 │ 458.69  │ 519.014 │ 5622.95 │ 5050.2  │ 6378.46 │
+  │ 6      │ 0.0808453 │ 458.669 │ 519.012 │ 5622.95 │ 5050.2  │ 6376.84 │
+  │ 7      │ 0.0808478 │ 458.649 │ 519.01  │ 5622.95 │ 5050.2  │ 6375.23 │
+  │ 8      │ 0.0808503 │ 458.628 │ 519.009 │ 5622.95 │ 5050.2  │ 6374.17 │
+  │ 9      │ 0.0808528 │ 458.607 │ 519.007 │ 5622.95 │ 5050.2  │ 6373.43 │
+  │ 10     │ 0.0808553 │ 458.587 │ 519.005 │ 5622.95 │ 5050.2  │ 6373.35 │
+  │ 11     │ 0.0808578 │ 458.566 │ 519.004 │ 5622.95 │ 5050.2  │ 6374.19 │
   ⋮
-  │ 414888 │ 6.36703e13 │ 0.09069   │ 520.15  │ 589.46  │ 5709.25 │ 5247.78 │
-  │ 414889 │ 6.36703e13 │ 0.09069   │ 520.15  │ 589.46  │ 5709.23 │ 5248.38 │
-  │ 414890 │ 6.36703e13 │ 0.09069   │ 520.15  │ 589.46  │ 5709.21 │ 5248.99 │
-  │ 414891 │ 6.36703e13 │ 0.09069   │ 520.15  │ 589.46  │ 5709.19 │ 5249.59 │
-  │ 414892 │ 6.36703e13 │ 0.09069   │ 520.15  │ 589.46  │ 5709.17 │ 5250.2  │
-  │ 414893 │ 6.36703e13 │ 0.09069   │ 520.15  │ 589.46  │ 5709.16 │ 5250.81 │
-  │ 414894 │ 6.36703e13 │ 0.09069   │ 520.15  │ 589.46  │ 5709.16 │ 5251.41 │
-  │ 414895 │ 6.36703e13 │ 0.09069   │ 520.15  │ 589.46  │ 5709.16 │ 5252.02 │
-  │ 414896 │ 6.36703e13 │ 0.09069   │ 520.15  │ 589.46  │ 5709.16 │ 5252.63 │
-  │ 414897 │ 6.36703e13 │ 0.09069   │ 520.15  │ 589.46  │ 5709.16 │ 5253.23 │
-  │ 414898 │ 6.36703e13 │ 0.09069   │ 520.15  │ 589.46  │ 5709.16 │ 5253.84 │
-  │ 414899 │ 6.36703e13 │ 0.09069   │ 520.15  │ 589.46  │ 5709.16 │ 5254.44 │
+  │ 414888 │ 0.09069   │ 520.15  │ 589.46  │ 5709.25 │ 5247.78 │ 6517.65 │
+  │ 414889 │ 0.09069   │ 520.15  │ 589.46  │ 5709.23 │ 5248.38 │ 6517.65 │
+  │ 414890 │ 0.09069   │ 520.15  │ 589.46  │ 5709.21 │ 5248.99 │ 6517.65 │
+  │ 414891 │ 0.09069   │ 520.15  │ 589.46  │ 5709.19 │ 5249.59 │ 6517.65 │
+  │ 414892 │ 0.09069   │ 520.15  │ 589.46  │ 5709.17 │ 5250.2  │ 6517.65 │
+  │ 414893 │ 0.09069   │ 520.15  │ 589.46  │ 5709.16 │ 5250.81 │ 6517.65 │
+  │ 414894 │ 0.09069   │ 520.15  │ 589.46  │ 5709.16 │ 5251.41 │ 6517.65 │
+  │ 414895 │ 0.09069   │ 520.15  │ 589.46  │ 5709.16 │ 5252.02 │ 6517.65 │
+  │ 414896 │ 0.09069   │ 520.15  │ 589.46  │ 5709.16 │ 5252.63 │ 6517.65 │
+  │ 414897 │ 0.09069   │ 520.15  │ 589.46  │ 5709.16 │ 5253.23 │ 6517.65 │
+  │ 414898 │ 0.09069   │ 520.15  │ 589.46  │ 5709.16 │ 5253.84 │ 6517.65 │
+  │ 414899 │ 0.09069   │ 520.15  │ 589.46  │ 5709.16 │ 5254.44 │ 6517.65 │
 #+END_EXAMPLE
 :END:
 
+
 Batch generator
 #+BEGIN_SRC jupyter-julia
-  len_seq_in = 50
-  len_seq_out = 50
+  len_in = 50
+  len_out = 5
   nbatch = 32
   nchannels = size(df)[2]
-  end_index = size(df)[1] - (len_seq_in + len_seq_in)
+  end_index = size(df)[1] - (len_in + len_in)
   start_indices = 1:end_index
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
-# Out[60]:
+# Out[141]:
 : 1:414799
 :END:
 
+
 #+BEGIN_SRC jupyter-julia
   using Random: shuffle
-  using Flux: unstack
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
-# Out[61]:
+# Out[7]:
 :END:
+
 
 Create input/output batch tuple generator with dimension T_{in|out} of arrays of size (D x B).
 - T_{in|out} :: input or output dimension
 - D :: number of features
 - B :: batch size
 #+BEGIN_SRC jupyter-julia
+  using Flux
   """
-      get_generator
-
-      returns a batch generator that where each batch is an array length T of entries with shape
-      D x B.
+    get_generator
+    Returns a batch generator where each batch is a pair of arrays with shape T(_in-1)|(_out) x B x D.
+    Applies first difference over time axis on original observations.
   """
   function get_generator()
-      ix_batches = Iterators.partition(shuffle(start_indices), nbatch)
-      # single entry in an input / output batch with shape: width_in/out, channels, batch size
-      get_input(ix) = reshape(convert(Array, df[ix:ix+(len_seq_in-1),:]),
-                              (len_seq_in, size(df)[2], 1))
-      get_output(ix) = reshape(convert(Array, df[ix+(len_seq_in):ix+(len_seq_in+len_seq_out-1),:]),
-                               (len_seq_out, size(df)[2], 1))
-      get_batch(b) = unstack.([cat(get_input.(b)..., dims=3), cat(get_output.(b)..., dims=3)], 1)
-      Base.Generator(get_batch, ix_batches)
-   end
+    ix_batches = Iterators.partition(shuffle(start_indices), nbatch)
+    # single entry in an input / output batch with shape: width_in/out,batch size, channels
+    range_in = 0:(len_seq_in-1)
+    range_out = (len_seq_in):(len_seq_in+len_seq_out-1)
+    function get_observations(ix)
+      obs = convert(Array{Float32}, df[ix .+ ([range_in..., range_out...]),:])
+      diff(obs, dims=1)
+    end
+    function get_batch(b)
+      """
+      Return time major batches
+      """
+      batch = Flux.stack(get_observations.(b), 2)
+      batch[1 .+ range_in[1:end-1],:,:], batch[range_out,:,:]
+    end
+    Base.Generator(get_batch, ix_batches)
+  end
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
-# Out[62]:
+# Out[23]:
 : get_generator
+:END:
+
+
+*** Very large differences
+
+conversion from Float64 to Float32 does not behave 
+
+#+BEGIN_SRC jupyter-julia
+  Δobs = diff(convert(Array{Float32}, df), 1)
+  bigdf = DataFrame(Δobs[(maximum(abs.(Δobs), dims=2) .> 10)[:],:], names(df))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[164]:
+#+BEGIN_EXAMPLE
+  112×16 DataFrame. Omitted printing of 11 columns
+  │ Row │ datevalue │ BCH-BTC     │ BCH-EUR     │ BCH-USD      │ BTC-EUR      │
+  ├─────┼───────────┼─────────────┼─────────────┼──────────────┼──────────────┤
+  │ 1   │ 0.0       │ 2.5034e-6   │ -0.0207214  │ -0.085083    │ -10.9497     │
+  │ 2   │ 0.0       │ 2.51085e-6  │ -0.0221863  │ 0.00311279   │ -0.000488281 │
+  │ 3   │ 4.1943e6  │ -1.41561e-7 │ -3.05176e-5 │ 0.00805664   │ 0.179688     │
+  │ 4   │ 0.0       │ 1.71363e-7  │ -0.00250244 │ -0.000305176 │ -0.0107422   │
+  │ 5   │ 0.0       │ 1.49012e-7  │ -0.00213623 │ 0.000305176  │ -0.122559    │
+  │ 6   │ 4.1943e6  │ 9.68575e-8  │ -0.0022583  │ 0.0136719    │ 0.000976563  │
+  │ 7   │ 0.0       │ 9.68575e-8  │ 0.00518799  │ 0.0286865    │ 23.019       │
+  │ 8   │ 4.1943e6  │ -9.90927e-7 │ -0.00180054 │ -0.00250244  │ -0.0107422   │
+  │ 9   │ 0.0       │ 3.8594e-6   │ -0.0647583  │ 0.0          │ -0.167969    │
+  │ 10  │ 4.1943e6  │ -2.68221e-7 │ -0.00518799 │ -0.00479126  │ 0.000488281  │
+  │ 11  │ 0.0       │ 1.11759e-7  │ -0.00848389 │ -0.010376    │ 10.0908      │
+  ⋮
+  │ 101 │ 4.1943e6  │ 5.96046e-8  │ 0.00488281  │ 0.000183105  │ 0.0          │
+  │ 102 │ 0.0       │ 1.49012e-7  │ 0.00253296  │ 0.0          │ 0.0463867    │
+  │ 103 │ 0.0       │ 0.0         │ 0.0189209   │ 0.231689     │ 0.000488281  │
+  │ 104 │ 0.0       │ 2.37674e-6  │ 0.0         │ -0.0319824   │ -0.000488281 │
+  │ 105 │ 4.1943e6  │ -2.5332e-7  │ 0.0         │ 0.000183105  │ 0.0          │
+  │ 106 │ 4.1943e6  │ 4.69387e-7  │ 0.00012207  │ -0.299866    │ 0.0          │
+  │ 107 │ 0.0       │ 0.0         │ 0.00140381  │ 0.0          │ 0.00439453   │
+  │ 108 │ 4.1943e6  │ 3.57628e-7  │ 0.0032959   │ 0.0358276    │ -0.271973    │
+  │ 109 │ 0.0       │ -9.83477e-7 │ -0.00195313 │ -0.00732422  │ -0.0708008   │
+  │ 110 │ 4.1943e6  │ 2.08616e-7  │ 0.00292969  │ 0.0247803    │ -0.000488281 │
+  │ 111 │ 4.1943e6  │ 1.49012e-8  │ 0.000976563 │ 0.0022583    │ 0.0          │
+  │ 112 │ 4.1943e6  │ -1.41561e-7 │ 0.000244141 │ 0.0          │ 0.0          │
+#+END_EXAMPLE
+:END:
+
+#+BEGIN_SRC jupyter-julia
+  using StatPlots
+  # @df DataFrame(Δobs[(maximum(Δobs, dims=2) .> 10)[:],:], names(df)) plot(names(df))
+  @df bigdf plot(:datevalue, names(df)[2:5])
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+0 - 62a8374a-cdc2-4add-88b2-6899efea63b2
+:END:
+
+#+BEGIN_SRC jupyter-julia
+  using Plots
+  p = plot(1:size(bigdf)[1], bigdf[names(df)[2]])
+  plot!(p, 1:size(bigdf)[1], bigdf[names(df)[3]])
+  # for i = 3:size(bigdf)[2]
+  #     plot!(p, 1:size(bigdf)[1], bigdf[names(df)[i]])
+  # end
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[168]:
+[[file:./obipy-resources/jhtL52.svg]]
 :END:
 
 
 
 *** Model
+
 A recurrent model which takes a sequence of annotations, attends, and returns a predicted output.
 
-Tried to follow [[https://arxiv.org/abs/1409.0473][Bahdanau et al]]. but used an lstm cell for the output sequence which may be different from what's described in the paper.
+Approximately follows [[https://arxiv.org/abs/1409.0473][Bahdanau et al]]. but used an lstm cell for the output sequence which may be different from what's described in the paper.
 
-**** TensorFlow
+**** tensorflow - pycall
+
+***** train
+
+#+BEGIN_SRC jupyter-julia
+  len_in = 100
+  len_out = 20
+  nbatch = 32  
+  nepochs = 10
+  model_dir = "tmpZc797s" # mktempdir(abspath(""))
+  frac_test = .3
+  @info "model is stored in $model_dir"
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[22]:
+:END:
+
+#+BEGIN_SRC jupyter-julia
+  using PyCall
+  using Queryverse, DataFrames
+  @pyimport pydoc
+  df = load("postproc3.feather") |> DataFrame
+  delete!(df, :datevalue)
+  data = convert(Array{Float64}, df)
+  len_train = floor(Int64, size(data)[1] * (1-frac_test))  
+  train_data = data[1:len_train,:]
+  test_data = data[len_train+1:end,:]
+  # data = diff(data, 1)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[14]:
+#+BEGIN_EXAMPLE
+  124470×15 Array{Float64,2}:
+  0.0834541  474.229  537.9   5680.0   …  0.00888     50.3186  57.37
+  0.0834541  474.229  537.9   5680.0      0.00888     50.3186  57.37
+  0.0834542  474.23   537.9   5680.0      0.00888     50.3185  57.37
+  0.0834542  474.23   537.9   5680.0      0.00888     50.3184  57.3699
+  0.0834542  474.23   537.9   5680.0      0.00888     50.3184  57.3698
+  0.0834543  474.23   537.9   5680.0   …  0.00888     50.3183  57.3698
+  0.0834543  474.231  537.9   5680.0      0.00888     50.3183  57.3697
+  0.0834543  474.231  537.9   5680.0      0.00888     50.3182  57.3696
+  0.0834544  474.231  537.9   5680.0      0.00888     50.3181  57.3695
+  0.0834544  474.231  537.9   5680.0      0.00888     50.3181  57.3695
+  0.0834544  474.232  537.9   5680.0   …  0.00888     50.318   57.3694
+  0.0834545  474.232  537.9   5680.0      0.00888     50.3179  57.3693
+  0.0834545  474.232  537.9   5680.0      0.00888     50.3179  57.3693
+  ⋮                                    ⋱
+  0.09069    520.15   589.46  5709.25     0.00915594  52.4138  59.8844
+  0.09069    520.15   589.46  5709.23     0.00915592  52.4139  59.884
+  0.09069    520.15   589.46  5709.21  …  0.0091559   52.4141  59.8836
+  0.09069    520.15   589.46  5709.19     0.00915587  52.4142  59.8832
+  0.09069    520.15   589.46  5709.17     0.00915585  52.4144  59.8828
+  0.09069    520.15   589.46  5709.16     0.00915583  52.4145  59.8824
+  0.09069    520.15   589.46  5709.16     0.00915581  52.4146  59.882
+  0.09069    520.15   589.46  5709.16  …  0.00915578  52.4148  59.8817
+  0.09069    520.15   589.46  5709.16     0.00915576  52.4149  59.8813
+  0.09069    520.15   589.46  5709.16     0.00915574  52.4151  59.8809
+  0.09069    520.15   589.46  5709.16     0.00915572  52.4152  59.8805
+  0.09069    520.15   589.46  5709.16     0.00915569  52.4154  59.8801
+#+END_EXAMPLE
+:END:
+
+#+BEGIN_SRC jupyter-julia
+  params = Dict("lr_start"=>.0001,
+                "lr_decay"=>.99999,
+                "len_in"=>len_in,
+                "len_out"=>len_out,
+                "nepochs"=>nepochs,
+                "Nh"=>10, # size of hidden layer
+                "Nc"=>12, # size of context
+                "D"=>size(train_data)[2])
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[15]:
+#+BEGIN_EXAMPLE
+  Dict{String,Real} with 8 entries:
+  "Nc"       => 12
+  "len_out"  => 20
+  "lr_decay" => 0.99999
+  "lr_start" => 0.0001
+  "nepochs"  => 10
+  "Nh"       => 10
+  "D"        => 15
+  "len_in"   => 100
+#+END_EXAMPLE
+:END:
+
+Load local file
+#+BEGIN_SRC jupyter-julia
+  localpath = "pybot/input.py"
+  filepath = abspath(joinpath(dirname(@__FILE__),localpath))
+  specname = "pybot.input" # need pybot inorder to allow relative import
+  pymodule = pyimport_module(filepath, specname)
+  functionname = "input_wrapper_function"
+  pyinput_fn = pymodule[Symbol(functionname)](train_data, len_in, len_out, nbatch, nepochs)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[12]:
+: PyObject <function input_wrapper_function.<locals>._input_fn at 0x7fb0894648c8>
+:END:
+
+#+BEGIN_SRC jupyter-julia
+  localpath = "pybot/model.py"
+  filepath = abspath(joinpath(dirname(@__FILE__),localpath))
+  modulename = "pybot.model" # need pybot inorder to allow relative import
+  functionname = "model_fn"
+  modelmod = pyimport_module(filepath, modulename)
+  pymodel_fn = modelmod[Symbol(functionname)]
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[24]:
+: PyObject <function model_fn at 0x7fe6182a2378>
+:END:
+
+#+BEGIN_SRC jupyter-julia :eval never :exports none :tangle n
+  imp.reload(modelmod)
+#+END_SRC
+
+#+BEGIN_SRC jupyter-julia :eval never :exports none :tangle n
+  model_fn = pydoc.locate("pybot.model.model_fn")
+#+END_SRC
+
+#+BEGIN_SRC jupyter-julia
+  @pyimport tensorflow as pytf
+  pytf.logging[:set_verbosity](pytf.logging[:DEBUG])
+  config = pytf.estimator[:RunConfig](save_summary_steps=10000,
+                                      tf_random_seed=1234,
+                                      save_checkpoints_secs=600)
+  estimator = pytf.estimator[:Estimator](model_fn=pymodel_fn, params=params,
+                                         model_dir=model_dir, config=config)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[25]:
+: PyObject <tensorflow.python.estimator.estimator.Estimator object at 0x7fe618256898>
+:END:
+
+#+BEGIN_SRC jupyter-julia
+   estimator[:train](pyinput_fn)
+#+END_SRC
+
+#+BEGIN_SRC jupyter-julia :eval never :exports none :tangle n
+  rm(model_dir, recursive=true)
+#+END_SRC
+
+
+***** eval
+
+#+BEGIN_SRC jupyter-julia
+  localpath = "pybot/input.py"
+  filepath = abspath(joinpath(dirname(@__FILE__),localpath))
+  specname = "pybot.input" # need pybot inorder to allow relative import
+  pymodule = pyimport_module(filepath, specname)
+  functionname = "input_wrapper_function"
+  nepochs = 1
+  nbatch = nothing  
+  pyinput_fn_test = pymodule[Symbol(functionname)](test_data, len_in, len_out, nbatch, nepochs)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[27]:
+: PyObject <function input_wrapper_function.<locals>._input_fn at 0x7fe5780c7b70>
+:END:
+
+#+BEGIN_SRC jupyter-julia
+  val = estimator[:evaluate](pyinput_fn_test)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[54]:
+#+BEGIN_EXAMPLE
+  Dict{Any,Any} with 4 entries:
+  "MAE"         => 0.0208618
+  "global_step" => 0
+  "MSE"         => 0.0113027
+  "loss"        => 0.0113027
+#+END_EXAMPLE
+:END:
+
+#+BEGIN_SRC jupyter-julia
+  preds = estimator[:predict](pyinput_fn_test)
+  preds = PyCall.builtin[:list](preds)
+#+END_SRC
+
+
+**** TensorFlow.jl
+
+***** works
 
 #+BEGIN_SRC jupyter-julia
   using TensorFlow
   const tf = TensorFlow
   sess = Session(Graph())
+  summary = tf.summary
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
-# Out[176]:
-: Session(Ptr{Nothing} @0x00007fb1d4dab570)
+# Out[53]:
+: Session(Ptr{Nothing} @0x00007ff1e1a52fd0)
 :END:
 
 Time major input
 #+BEGIN_SRC jupyter-julia
-  Nin = size(df)[2] # number of features in input
-  x = tf.placeholder(Float32, shape=[len_seq_in, nbatch, Nin])
+  D = size(df)[2] # number of features in input
+  xin = tf.placeholder(Float32, shape=[len_seq_in-1, nbatch, D])
+  yin = tf.placeholder(Float32, shape=[len_seq_out, nbatch, D])
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
-# Out[177]:
-: <Tensor placeholder:1 shape=(50, 32, 16) dtype=Float32>
+# Out[54]:
+: <Tensor placeholder_2:1 shape=(5, 32, 15) dtype=Float32>
 :END:
 
+parameters
 #+BEGIN_SRC jupyter-julia
+  learning_rate = .0001
+  n_epochs= 10
   Nh = 10 # size of hidden layer
   Nc = 12 # size of context
+  Nfwd = Nh÷2
+  Nbwd = Nh÷2
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
-# Out[178]:
-: 10
+# Out[22]:
+: 5
 :END:
 
 #+BEGIN_SRC jupyter-julia
-  forward  = nn.rnn_cell.LSTMCell(Nh÷2)
-  backward = nn.rnn_cell.LSTMCell(Nh÷2)  
+  forward  = nn.rnn_cell.LSTMCell(Nfwd)
+  backward = nn.rnn_cell.LSTMCell(Nbwd)
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
-# Out[179]:
+# Out[23]:
 : TensorFlow.nn.rnn_cell.LSTMCell{Float32}(5, 1.0f0)
 :END:
 
 The easy way for making bidirectional rnn
 #+BEGIN_SRC jupyter-julia
-  x = tf.unstack(x, axis=1)
+  x = tf.unstack(xin, axis=1)
   fout, fstate = nn.rnn(forward, x, scope="fwRNN")
   bout, bstate = nn.rnn(backward, reverse(x, 1), scope="bwRNN")
   reverse!(bout)
@@ -1026,41 +1970,40 @@ The easy way for making bidirectional rnn
 
 #+RESULTS:
 :RESULTS:
-# Out[180]:
+# Out[24]:
 : <Tensor Pack:1 shape=(50, 32, 10) dtype=Float32>
 :END:
-
+  
 #+BEGIN_SRC jupyter-julia
+  using Distributions
   variable_scope("align"; initializer=Normal(0, .001)) do
-       # global Wa = get_variable("Wa", [Nh*2, Nc], Float32)
-       global Wat = get_variable("Wat", [Nh, Nc], Float32)
+       global Wat = get_variable("Wat", [Nh*2, Nc], Float32)
        global Was = get_variable("Was", [1, 1, Nh, Nc], Float32)
-       # global B = get_variable("B", [Nc], Float32)
-       # global vt = get_variable("vt", [Nc], Float32)
+       global B = get_variable("B", [Nc], Float32, initializer=tf.ones(Nc))
+       global vt = get_variable("vt", [Nc], Float32)
   end
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
-# Out[276]:
-: Variable{Float32}(<Tensor align/Was:1 shape=(10, 10) dtype=Float32>, <Tensor align/Was/Assign:1 shape=unknown dtype=Float32>)
+# Out[25]:
+: Variable{Float32}(<Tensor align/vt:1 shape=(12) dtype=Float32>, <Tensor align/vt/Assign:1 shape=(12) dtype=Float32>)
 :END:
 
 #+BEGIN_SRC jupyter-julia
-  score(e,t) = dropdims(tanh.(tf.concat([e,t], 2)*Wa + B)*expand_dims(vt, 2), dims=[2])
-  tf.expand_dims(tf.transpose(enc, [1,0,2]), [2])
-  align(E,t) = tf.stack(map(e->score(e,t), tf.unstack(E, axis=1)))
+  score(e,t) = dropdims(tf.tanh(tf.concat([e,t], 2)*Wat + B)*expand_dims(vt, 2))
+  align(E,t) = tf.stack(map(e->score(e,t), tf.unstack(E, axis=1)), axis=1)
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
-# Out[214]:
+# Out[26]:
 : align (generic function with 1 method)
 :END:
 
 Use forward output state to initialize output rnn cell.
 #+BEGIN_SRC jupyter-julia
-  variable_scope("transfer_state"; initializer=Normal(0, .001)) do
+  variable_scope("to_recur_state"; initializer=Normal(0, .001)) do
        global Wts = get_variable("W", [Nh, Nh*2], Float32)
        global Bts = get_variable("B", [Nh*2], Float32)
   end
@@ -1068,156 +2011,113 @@ Use forward output state to initialize output rnn cell.
 
 #+RESULTS:
 :RESULTS:
-# Out[227]:
-: Variable{Float32}(<Tensor transfer_state/B:1 shape=(20) dtype=Float32>, <Tensor transfer_state/B/Assign:1 shape=unknown dtype=Float32>)
+# Out[27]:
+: Variable{Float32}(<Tensor to_recur_state/B:1 shape=(20) dtype=Float32>, <Tensor to_recur_state/B/Assign:1 shape=(20) dtype=Float32>)
 :END:
 
 #+BEGIN_SRC jupyter-julia
-  stat_init = tf.concat([fstate.c, fstate.h], 2)*Wts + Bts
-  recur = nn.rnn_cell.LSTMCell(Nh)
+  variable_scope("from_recur_state"; initializer=Normal(0, .001)) do
+       global Wtso = get_variable("Wo", [Nh, D], Float32)
+       global Btso = get_variable("Bo", [D], Float32)
+  end
 #+END_SRC
 
+#+RESULTS:
+:RESULTS:
+# Out[28]:
+: Variable{Float32}(<Tensor from_recur_state/Bo:1 shape=(15) dtype=Float32>, <Tensor from_recur_state/Bo/Assign:1 shape=(15) dtype=Float32>)
+:END:
+
+Transfer state to output rnn and split 
 #+BEGIN_SRC jupyter-julia
-  state_transfer = Dense((forward.state, ), size(vcat(recur.state...))[1])
-  ranges = []
-  output_transfer = Dense(Nh, Nin)
-  let rstart=1
-      for s in recur.state
-          rend = rstart+length(s)-1
-          push!(ranges, rstart:rend)
-          rstart = rend+1
+  state_init = tf.concat([fstate.c, fstate.h], 2)*Wts + Bts
+  # range corresponding to c and h
+  crange = 1:Nh
+  hrange = 1+Nh:2*Nh
+  cₜ = state_init[:, crange]
+  hₜ = state_init[:, hrange]
+  recur = variable_scope("recur") do
+    nn.rnn_cell.LSTMCell(Nh)
+  end
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[29]:
+: TensorFlow.nn.rnn_cell.LSTMCell{Float32}(10, 1.0f0)
+:END:
+
+#+BEGIN_SRC jupyter-julia
+  preds = []
+  for i = 1:len_seq_out
+      global hₜ
+      global cₜ
+      α = expand_dims(align(enc, hₜ), 3)
+      yi = tf.reduce_sum(α .* enc; axis=1)
+      si = tf.nn.rnn_cell.LSTMStateTuple(cₜ, hₜ)
+      yo, so = variable_scope("recuriter"; reuse=i>1) do
+        recur(yi, si)
       end
+      cₜ, hₜ = so.c, so.h
+      push!(preds, yo*Wtso + Btso)
   end
+  ŷ = tf.stack(preds)
+  loss_MSE = reduce_mean((yin.-ŷ).^2)
+  loss_summary = summary.scalar("MSE loss", loss_MSE)
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
-0 - 1b2a019b-497a-4eea-935e-b7b5f1bdf173
+# Out[30]:
+: <Tensor reduce_6:1 shape=() dtype=Float32>
 :END:
+
+
+***** Run model
 
 #+BEGIN_SRC jupyter-julia
-  function decode(enc)
-      recurstate = state_transfer(vcat(forward.state...))
-      recur.state = [recurstate[r,:] for r in ranges]
-      preds = []
-      hₜ = recur.state[1]
-      # restack enc along time and unstack along batch inorder to multiply by alpha
-      # probably better way to do this...
-      enc′ = unstack(vcat((e->reshape(e, (1, size(e)...))).(enc)...), 3)
-      for i in 1:len_seq_out
-          α = alignvec(enc, hₜ)
-          # α .* enc, there is probably cleaner way of doing this:
-          c = cat(map(x->(x[1]' * x[2])'[:,:], zip(unstack(α, 2), enc′))..., dims=2)
-          hₜ = recur(c)
-          push!(preds, output_transfer(hₜ)) 
-      end
-      return preds
-  end
+  optimizer=train.AdamOptimizer(learning_rate)
+  # Gradient decent with gradient clipping
+  # gvs = train.compute_gradients(optimizer, loss_MSE)
+  # capped_gvs = [(clip_by_norm(grad, 5.), var) for (grad, var) in gvs]
+  # opt_step = train.apply_gradients(optimizer,capped_gvs)
+  opt_step = train.minimize(optimizer, loss_MSE)
 #+END_SRC
 
 #+RESULTS:
-:RESULTS:
-# Out[23]:
-: decode (generic function with 1 method)
-:END:
 
 #+BEGIN_SRC jupyter-julia
-  state = (forward, backward, recur, output_transfer, state_transfer)
-  function model(x)
-      ŷ = decode(encode(x))
-      reset!(state)
-      return ŷ
-  end
-  meansquarederror(ŷ, y) = sum((ŷ .- y).^2)/size(y, 2)
-  loss(x, y) = meansquarederror(model(x), y)
-#+END_SRC
-
-#+BEGIN_SRC jupyter-julia  
-  opt = ADAM(params(state))
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-# Out[37]:
-: #43 (generic function with 1 method)
-:END:
-
-#+BEGIN_SRC jupyter-julia :eval never 
-@epochs 1 begin
-    tic()
-    train = get_generator()
-    for i in train
-        l = loss(i[1], i[2])
-        println("The loss for current minibatch is $l")
-        Flux.back!(l)
-        opt()
-    end
-    toc()
-end
+  run(sess, global_variables_initializer())
 #+END_SRC
 
 #+BEGIN_SRC jupyter-julia :eval never 
-  evalcb = () -> @show loss(data[500]...)
-  Flux.train!(loss, data, opt, cb = throttle(evalcb, 10))
-#+END_SRC
+  merged_summary_op = summary.merge_all()
+  # Create a summary writer
+  summary_dir = mktempdir()
+  @info "summary directory: $(summary_dir)"
+  summary_writer = summary.FileWriter(summary_dir)
 
-#+RESULTS:
-:RESULTS:
-0 - 6a3acdf0-0375-4ed8-b671-3b4aeb3d459e
-:END:
-
-#+BEGIN_SRC jupyter-julia
-  # Prediction
-
-  using StatsBase: wsample
-
-  function predict(s)
-    ts = encode(tokenise(s, alphabet))
-    ps = Any[:start]
-    for i = 1:50
-      dist = decode1(ts, onehot(ps[end], phones))
-      next = wsample(phones, dist.data)
-      next == :end && break
-      push!(ps, next)
-    end
-    return ps[2:end]
+  step = 0
+  @showprogress for epoch = 1:n_epochs
+      batchgen = get_generator()
+      epoch_loss = Float64[]
+      for i in batchgen
+          if size(i[1])[2] == nbatch
+              @debug x, y, size(i[1]), size(i[2])
+              loss_o, summaries, _ = run(sess, (loss_MSE, merged_summary_op, opt_step), Dict(xin=>i[1], yin=>i[2]))
+              step = step+1
+              write(summary_writer, summaries, step)
+              push!(epoch_loss, loss_o)
+          end
+      end
+    
+      push!(basic_train_loss, mean(epoch_loss))    
   end
-
 #+END_SRC
 
-#+RESULTS:
-:RESULTS:
-# Out[284]:
-#+BEGIN_EXAMPLE
-  32-element Array{Any,1}:
-  :AH0
-  :L
-  :AH0
-  :AA1
-  :N
-  :K
-  :K
-  :L
-  :IH0
-  :V
-  :F
-  :R
-  :IY1
-  ⋮
-  :N
-  :N
-  :ER0
-  :F
-  :IH0
-  :N
-  :T
-  :IH0
-  :N
-  :IH0
-  :L
-  :IY0
-#+END_EXAMPLE
-:END:
+#+BEGIN_SRC jupyter-julia :eval never  
+  plot(basic_train_loss, label="training loss")
+#+END_SRC
 
 
 **** Flux
@@ -1416,6 +2316,929 @@ end
   :L
   :IY0
 #+END_EXAMPLE
+:END:
+
+
+** Python 
+:PROPERTIES:
+:header-args: ipython :session mbotpy-ssh.json :results raw drawer :tangle mbot.py :eval never-export :async t
+:END:
+
+*** new
+
+**** Get data
+
+#+BEGIN_SRC ipython
+  import pandas as pd
+  df = pd.read_feather("postproc3.feather")
+  df.drop("datevalue", inplace=True, axis=1)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+1 - 23b3f99a-a456-49c3-be34-d0e3d05da8ab
+:END:
+
+Batch generator
+#+BEGIN_SRC jupyter-julia
+  len_seq_in = 50
+  len_seq_out = 5
+  nbatch = 32
+  nchannels = size(df)[2]
+  end_index = size(df)[1] - (len_seq_in + len_out)
+  # start_indices = 1:end_index
+#+END_SRC
+
+
+**** Tensorflow
+
+***** Input
+
+#+BEGIN_SRC ipython
+  import tensorflow as tf
+  import numpy as np
+
+
+  def input_wrapper_function(data, len_in, len_out, nbatch, nepochs):
+      end_ix = data.shape[1] - (len_in + len_out)
+      start_indices = np.range(end_ix)
+
+      tdata = tf.constant(data, dtype=tf.float32)
+      train_ds = tf.data.Dataset.from_tensor_slices(start_indices)
+      train_ds = train_ds.shuffle(buffer_size=40000)
+
+      def get_input_output(ix):
+          range_in = tf.range(ix, ix + len_in)
+          range_out = tf.range(ix + len_in, ix + len_in + len_out)
+          return tf.gather(tdata, range_in, axis=0), tf.gather(tdata, range_out, axis=0)
+
+      train_ds = train_ds.map(get_input_output, num_parallel_calls=8).prefetch(5000)
+      if nbatch is None:
+          nbatch = start_indices.shape[0]
+      train_ds = train_ds.batch(nbatch).repeat(nepochs)
+
+      def _input_fn():
+          return train_ds.make_one_shot_iterator().get_next()
+
+      return _input_fn
+#+END_SRC
+
+
+***** predictor
+
+#+BEGIN_SRC ipython 
+  from pydoc import locate
+  import tensorflow as tf
+  nn = tf.nn
+  dense = tf.layers.dense
+  ModeKeys = tf.estimator.ModeKeys
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[23]:
+:END:
+
+temporary
+#+BEGIN_SRC ipython :tangle f
+  D = df.shape[1]
+  seqin = tf.placeholder(tf.float32, shape=[None, None, D])
+  seqout = tf.placeholder(tf.float32, shape=[None, None, D])
+  params = {}
+  params["Nh"] = 10
+  params["Nc"] = 12
+  params["learning_rate"] = 1e-4
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[24]:
+:END:
+
+#+BEGIN_SRC ipython
+  Nh = params["Nh"]
+  Nc = params["Nc"]
+
+  Nfwd = Nh // 2
+  Nbwd = Nh // 2
+  forward  = nn.rnn_cell.LSTMCell(Nfwd)
+  backward = nn.rnn_cell.LSTMCell(Nbwd)
+
+  outputs, output_states = nn.bidirectional_dynamic_rnn(forward, backward, seqin, time_major=True, dtype=tf.float32)
+  statfw, statbw = output_states
+  enc = tf.concat(outputs, axis=-1)
+  statfw = tf.concat(statfw, 1) # concatenate 
+  state_init = tf.layers.dense(statfw, 2*Nh)
+
+  # Transfer state to output rnn and split 
+  ct = state_init[:, :Nh]
+  ht = state_init[:, Nh:2*Nh]
+
+  recur = nn.rnn_cell.LSTMCell(Nh)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[25]:
+:END:
+
+#+BEGIN_SRC ipython
+  def align(t):
+      T = tf.tile(tf.expand_dims(t, 0),[tf.shape(enc)[0], 1, 1])
+      stilde = tf.layers.dense(tf.concat([T, enc], -1), Nc, activation = tf.tanh)
+      return nn.softmax(tf.squeeze(tf.layers.dense(stilde, 1, use_bias=False), axis=2), axis=0)
+
+  def body(i, s, y_tm1, ta):
+      """
+      predict based on previous hidden state and prediction
+      i: current timestep
+      s: last step's state. shape = ((B x n_hidden), (B x n_hidden))
+      ta: dynamic tensorarray to store outputs (can be static, atm)
+      """
+      alpha = align(s.h)
+      c = tf.reduce_sum(tf.multiply(enc, tf.expand_dims(alpha, 1)), axis=0)
+      ytilde = tf.concat([y_tm1, c], axis=-1)  # concatenate context and previous
+      y_t, s = recur(tf.layers.dense(ytilde, Nh), s)
+      ta = ta.write(i, y_t)
+      return i+1, s, y_t, ta
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[26]:
+:END:
+
+#+BEGIN_SRC ipython
+  cond = lambda i,s,y,ta: i < tf.shape(enc)[0]
+  i0 = tf.constant(0, dtype=tf.int32)
+  y0 = enc[-1,:,:]# tf.zeros_like(enc[0,:,:])
+  s0 = nn.rnn_cell.LSTMStateTuple(c=ct, h=ht)
+  ta0 = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True,
+                           element_shape=tf.TensorShape([None,Nh]))  # array of tensors
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[27]:
+:END:
+
+#+BEGIN_SRC ipython
+  i,s,y,ta = tf.while_loop(cond, body, [i0,s0,y0,ta0])
+  yhat = tf.layers.dense(ta.stack(), D)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[28]:
+:END:
+
+
+***** loss
+
+#+BEGIN_SRC jupyter-julia
+  loss = tf.losses.mean_squared_error(seqout, yhat)
+  loss_summary = tf.summary.scalar("MSE_loss", loss)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[30]:
+: <Tensor reduce_6:1 shape=() dtype=Float32>
+:END:
+
+
+***** optimizer
+
+Gradient decent with gradient clipping
+#+BEGIN_SRC ipython
+  train = tf.train
+  optimizer=train.AdamOptimizer(learning_rate)
+  gvs = optimizer.compute_gradients(loss)
+  capped_gvs = [(tf.clip_by_norm(grad, 5.), var) for (grad, var) in gvs] 
+  opt_step = optimizer.apply_gradients(capped_gvs)
+  # opt_step = train.minimize(optimizer, loss_MSE)  
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[55]:
+:END:
+
+
+*** old
+
+**** does something
+
+#+BEGIN_SRC ipython
+  cd ~/Documents/work/marketbot
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[5]:
+:END:
+
+#+BEGIN_SRC ipython
+  import tensorflow as tf
+  tf.reset_default_graph()
+  lstm = locate('src.models.lstm2')
+  # lstm2.__main__()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  lstm.main()
+#+END_SRC
+
+#+BEGIN_SRC ipython
+  predict_input_fn = lstm._input_fn_wrapper('data/clean/data.csv', lstm.ModeKeys.PREDICT, 10, lstm.DEFAULT_TRAIN_PARAMS)
+  rnn = lstm.estimator()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  rnn.predict(input_fn=predict_input_fn)
+#+END_SRC
+
+
+
+**** namespace
+
+#+BEGIN_SRC ipython
+  import tensorflow as tf
+  tf.reset_default_graph()
+  sess = tf.InteractiveSession()
+
+  with tf.variable_scope('a'):
+      with tf.variable_scope('b'):
+          v = tf.get_variable('v', initializer=tf.ones(3))
+  with tf.variable_scope('', reuse=True):
+      v2 = tf.get_variable('a/b/v')
+  init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
+  sess.run(init)  
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython :exports both
+  V1 = tf.random_normal((10,3))
+  V2 = tf.get_variable('abc', initializer=V1)
+  with tf.variable_scope('', reuse=True):
+    abc = tf.get_variable('abc', (10,3))
+    abc.assign(tf.ones((10,3)))
+  init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
+  sess.run(init)
+  abc.eval() - V2.eval()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+#+BEGIN_EXAMPLE
+  array([[0., 0., 0.],
+  [0., 0., 0.],
+  [0., 0., 0.],
+  [0., 0., 0.],
+  [0., 0., 0.],
+  [0., 0., 0.],
+  [0., 0., 0.],
+  [0., 0., 0.],
+  [0., 0., 0.],
+  [0., 0., 0.]], dtype=float32)
+#+END_EXAMPLE
+:END:
+
+
+**** trying out eager
+
+#+BEGIN_SRC ipython
+  import tensorflow as tf
+  tfe = tf.contrib.eager
+  tfe.enable_eager_execution()
+#+END_SRC
+
+#+BEGIN_SRC ipython
+  import numpy as np
+  A = np.random.randn(5,3)
+  mu, std = tf.nn.normalize_moments(A.shape[0], *tf.nn.moments(tf.cast(A, dtype=tf.float32), axes=0), None)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+
+**** Run ira_rnn
+
+#+BEGIN_SRC ipython
+  %cd marketbot
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+  
+#+BEGIN_SRC ipython
+  from importlib import reload
+  import src.models.lstm as lstm
+  reload(lstm)
+  lstm.__main__()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  lstm = locate('src.models.lstm')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+**** import_fn
+
+#+BEGIN_SRC ipython
+  from pydoc import locate
+  import tensorflow as tf
+  import numpy as np
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  path = 'marketbot/data/clean/data3.csv'
+  data = np.genfromtxt(path, delimiter=',')[2:, 1:]
+  data.shape
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  : (85985, 3)
+  :END:
+  
+  #+BEGIN_SRC ipython
+  data = tf.convert_to_tensor(data)
+  horizon = 10
+  window = 100
+  targets = data[horizon + window - 1 :, 1] / data[window - 1 : -horizon, 1] - 1
+  features = tf.contrib.signal.frame(data, window, 1, axis=0)[:-horizon, :]
+  tf.data.Dataset.from_tensor_slices({'train': features, 'repsonse':targets})
+#+END_SRC
+
+
+
+
+**** setup
+
+***** Load
+
+#+BEGIN_SRC ipython
+  import pandas as pd
+  import os 
+  from datetime import datetime as dt
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+****** ak preprocess
+
+#+BEGIN_SRC ipython
+  from marketbot.src import dataloader
+  agg_df = dataloader.get_data('marketbot/data/data2.csv')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+******* temp
+:PROPERTIES:
+:header-args: :eval never
+:END:
+
+#+BEGIN_SRC ipython
+path='marketbot/data/data2.csv'; interval_length=1; window_length=100; stride_length=1; predict_length=10
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  df = pd.read_csv(path, index_col='sequence')
+  df['time'] = pd.to_datetime(df['time'])
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  def mean_price(g):
+      """ computes size-weighted price of trades """
+      vol = g['volume'].sum()
+      price = (g['volume'] * g['price']).sum() / (vol + 1e-8)
+      return pd.Series([vol, price], ['volume', 'price'])
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+#+BEGIN_SRC ipython
+  def discretize(df, interval_length):
+      """ interval_length = number of seconds to aggregate in """
+      if interval_length == 0:
+          grouped = df.groupby('time')
+      else:
+          grouped = df.resample('{}S'.format(interval_length), on='time')
+      return grouped.apply(mean_price).reset_index()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+#+BEGIN_SRC ipython
+  agg_df = discretize(df, interval_length)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  agg_df['price2'] = np.nan
+  agg_df['volume2'] = np.nan
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+whereever price == 0 we have a missing observation
+#+BEGIN_SRC ipython
+  agg_df.loc[(agg_df.price != 0), "price2"] = agg_df[(agg_df.price != 0)].price
+  agg_df.loc[(agg_df.price != 0), "volume2"] = agg_df[(agg_df.price != 0)].volume
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  agg_df.volume2 = agg_df.volume2.fillna(method='ffill')
+  agg_df.price2 = agg_df.price2.fillna(method='ffill')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  agg_df['change2'] = agg_df.price2.pct_change()
+  agg_df['outcomes2'] = agg_df.price2.pct_change(periods= predict_length).shift(-predict_length)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+
+#+BEGIN_SRC ipython
+  agg_df.volume = agg_df.volume.fillna(0.0)
+  agg_df.price = agg_df.price.fillna(method='ffill')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  agg_df['change'] = agg_df.price.pct_change()
+  agg_df['outcomes'] = agg_df.price.pct_change(periods= predict_length).shift(-predict_length)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+****** original preprocesss
+:PROPERTIES:
+:header-args: :eval never
+:END:
+
+#+BEGIN_SRC ipython
+  df = pd.read_csv('marketbot/data/data2.csv')
+  df['time'] = pd.to_datetime(df.time)
+  df['timestamp'] = df.time.apply(dt.timestamp)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  from matplotlib import pyplot as plt
+  import numpy as np
+  data = df.groupby('timestamp').apply(lambda g: g[['price', 'size']].mean(axis=0))
+  assert np.diff(data.index).min() > 0  # data is sorted
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+***** model config
+
+#+BEGIN_SRC ipython
+  os.chdir('marketbot/src')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  from collections import namedtuple
+  flagdct = {'batch_size': 64,
+             'data_dir': '/tmp/dat/',
+             'hidden_dim': 200,
+             'l1reg_coeff': 1e-10,
+             'l2reg_coeff': 1e-9,
+             # 'l1reg_coeff': 1,
+             # 'l2reg_coeff': 1,
+             'latent_dim': 160,
+             'logdir': '/tmp/log/',
+             'n_epochs': 100000,
+             'n_iterations': 100000,
+             'n_samples_predict': 20,
+             'n_samples_train': 10,
+             'print_every': 1000, 
+             'huber_loss_delta': .1,
+             'use_update_ops': False}  # update_ops control dependency is necessary for batch norm
+  FLAGS = namedtuple('FLAGS',flagdct.keys())(**flagdct)
+  ff_params = dict(dim_hidden=20, rnn_stack_height=3)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+**** explore
+
+#+BEGIN_SRC ipython
+  %matplotlib inline
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython :exports both
+  import numpy as np
+  df['logdiffprice'] = np.log(df.price).diff()
+  df[['logdiffprice', 'size', 'timestamp', 'price']].plot(x=['timestamp', 'timestamp'], y=['price', 'logdiffprice'], s=.7, kind='scatter', figsize=(30, 15))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: <matplotlib.axes._subplots.AxesSubplot at 0x7fec4cb0c748>
+[[file:./obipy-resources/8538-rS.png]]
+:END:
+
+#+BEGIN_SRC ipython :exports both
+  from matplotlib import pyplot as plt
+  fig, axes = plt.subplots(2, 1, sharex=True, figsize=(10,10))
+  df[['size', 'timestamp', 'price']].plot(x='timestamp', y='price', s=.7, kind='scatter',
+                                          figsize=(30, 15), ax=axes[0])
+  df[['size', 'timestamp', 'logdiffprice']].plot(x='timestamp', y='logdiffprice', s=.7,
+                                                 kind='scatter', figsize=(30, 15), ax=axes[1])
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: <matplotlib.axes._subplots.AxesSubplot at 0x7fec4c9b1400>
+[[file:./obipy-resources/8538L2Y.png]]
+:END:
+
+
+
+#+BEGIN_SRC ipython :exports both
+  df[['logdiffprice', 'size', 'timestamp']].plot(x='timestamp', y='logdiffprice', figsize=(30, 15))
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: <matplotlib.axes._subplots.AxesSubplot at 0x7fec4d75d518>
+[[file:./obipy-resources/8538kXG.png]]
+:END:
+
+#+BEGIN_SRC ipython :exports both
+  fig, axes = plt.subplots(2, 1, sharex=True, figsize=(10,10))
+  for i, col in enumerate(data.columns.values):
+     data.reset_index().plot.scatter(x='timestamp', y=col, ax=axes[i], s=.7)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+[[file:./obipy-resources/19656F3W.png]]
+:END:
+
+#+BEGIN_SRC ipython :exports both
+  from pandas.plotting import scatter_matrix
+  scatter_matrix(data, alpha=0.2, figsize=(6, 6), diagonal='kde')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+#+BEGIN_EXAMPLE
+  array([[<matplotlib.axes._subplots.AxesSubplot object at 0x7f271599bbe0>,
+  <matplotlib.axes._subplots.AxesSubplot object at 0x7f2715aaaeb8>],
+  [<matplotlib.axes._subplots.AxesSubplot object at 0x7f27159c8be0>,
+  <matplotlib.axes._subplots.AxesSubplot object at 0x7f271582e438>]], dtype=object)
+#+END_EXAMPLE
+[[file:./obipy-resources/19656SBd.png]]
+:END:
+
+
+**** debug
+
+***** playground
+
+#+BEGIN_SRC ipython
+  import os
+  os.chdir('marketbot')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  import  src.dataloader as dataloader
+  get_data = dataloader.get_data
+  path='data/data2.csv'; predict_length=10; interval_length=1; window_length=100
+  features, outcomes = get_data(path, interval_length, predict_length)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  import src.playground1 as pg
+  h = 10
+  split=.5
+  env = pg.Environment(features, h, split)  
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  tr = env.reset()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython :exports both
+  cur, loss, doneflag, info = env.step(0.0)
+  cur, loss, doneflag, info
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: (array([  3.00000000e-02,   1.31317100e+04,   2.22044605e-16]), 0.0, False, {})
+:END:
+
+#+BEGIN_SRC ipython
+  from importlib import reload
+  reload(pg)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: <module 'src.playground1' from '/home/ishai/Documents/work/irabitcoin/marketbot/src/playground1.py'>
+:END:
+
+
+***** run
+
+****** setup
+
+#+BEGIN_SRC ipython
+  import os
+  os.chdir('marketbot')
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+Create input provider
+#+BEGIN_SRC ipython
+  import  src.dataloader as dataloader
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  get_data = dataloader.get_data
+  WindowGen = dataloader.WindowGen
+  quantize = dataloader.quantize
+  path='data/data2.csv'; predict_length=10; interval_length=1; window_length=100
+  features, outcomes = get_data(path, interval_length, predict_length)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  import numpy as np
+  amin=-0.01
+  amax=0.01
+  step=1e-5
+  Y_n_categories = int(np.round((amax-amin)/step))
+#+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  :END:
+
+#+BEGIN_SRC ipython
+  q_outcomes = quantize(outcomes, amin=amin, amax=amax, step=step)
+  q_outcomes = np.expand_dims(q_outcomes, axis=1)
+  gen = WindowGen(features, q_outcomes, window_length, predict_length, Y_n_categories)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython :eval never
+  from importlib import reload
+  reload(dataloader)
+#+END_SRC
+
+#+BEGIN_SRC ipython
+  import marketbot.src.model1.runner as runner
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  from collections import namedtuple
+  flagdct = {'batch_size': 128,
+             'data_dir': '/tmp/dat/',
+             'hidden_dim': 200,
+             'l1reg_coeff': 1e-10,
+             'l2reg_coeff': 1e-9,
+             # 'l1reg_coeff': 1,
+             # 'l2reg_coeff': 1,
+             'latent_dim': 160,
+             'logdir': '/tmp/log/',
+             'n_epochs': 100000,
+             'n_iterations': 100000,
+             'n_samples_predict': 20,
+             'n_samples_train': 10,
+             'print_every': 1000, 
+             'huber_loss_delta': .1,
+             'use_update_ops': False}  # update_ops control dependency is necessary for batch norm
+  FLAGS = namedtuple('FLAGS',flagdct.keys())(**flagdct)
+  ff_params = dict(dim_hidden=20, rnn_stack_height=3)
+
+  catmodel = runner.Learner(ff_params, FLAGS)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  catmodel.initialize_train_graph(gen)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+****** train
+
+#+BEGIN_SRC ipython
+  catmodel.train(100)
+#+END_SRC
+
+#+BEGIN_SRC ipython
+  from importlib import reload
+  reload(runner)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: <module 'marketbot.src.model1.runner' from '/home/ishai/Documents/work/irabitcoin/marketbot/src/model1/runner.py'>
+:END:
+
+
+****** predict
+
+#+BEGIN_SRC ipython
+  
+#+END_SRC
+
+
+***** genertor
+
+#+BEGIN_SRC ipython
+  import utils
+  example_generator = utils.GrabSequence(X=data.values, t_ix=data.index.values, input_seq_len=100, time_gap_to_predict=10, stride=1)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  from importlib import reload
+  reload(utils)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: <module 'utils' from '/home/ishai/Documents/work/bitcoin/IraBC/marketbot/src/catnet/utils.py'>
+:END:
+
+#+BEGIN_SRC ipython
+  import tensorflow as tf
+  tf.reset_default_graph()
+  g = tf.Graph()
+  sess = tf.Session(graph=g)
+  with g.as_default():
+      train_ds = tf.data.Dataset.from_generator(example_generator, (tf.float32, tf.float32),
+                                                (tf.TensorShape([None, 2]), tf.TensorShape([2])))
+      train_ds.shuffle(buffer_size=100000)
+      train_ds = train_ds.batch(100)
+      iterator = tf.data.Iterator.from_structure(train_ds.output_types, train_ds.output_shapes)
+      training_init_op = iterator.make_initializer(train_ds)
+      batch = iterator.get_next()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+#+BEGIN_SRC ipython
+  with sess.as_default():
+      sess.run(training_init_op)
+      while (True):
+          b = sess.run(batch)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+:END:
+
+
+**** run
+
+#+BEGIN_SRC ipython
+  from runner import Learner
+  catmodel = Learner(ff_params, FLAGS)
+  catmodel.fit(data.values, t_ix=data.index.values)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
 :END:
 
 
@@ -1637,726 +3460,6 @@ Some considerable variability in sampling rate. Will need to resample.
       @map({product_id=_.key, delta=diff(_..date)})
 
 #+END_SRC
-
-
-** Python
-:PROPERTIES:
-:header-args: ipython :session marketbot-ssh.json :results raw drawer :tangle mbot.py :eval never-export :async t
-:END:
-
-*** does something
-
-#+BEGIN_SRC ipython
-  cd ~/Documents/work/marketbot
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-# Out[5]:
-:END:
-
-#+BEGIN_SRC ipython
-  import tensorflow as tf
-  tf.reset_default_graph()
-  lstm = locate('src.models.lstm2')
-  # lstm2.__main__()
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython
-  lstm.main()
-#+END_SRC
-
-#+BEGIN_SRC ipython
-  predict_input_fn = lstm._input_fn_wrapper('data/clean/data.csv', lstm.ModeKeys.PREDICT, 10, lstm.DEFAULT_TRAIN_PARAMS)
-  rnn = lstm.estimator()
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython
-  rnn.predict(input_fn=predict_input_fn)
-#+END_SRC
-
-
-
-*** namespace
-
-#+BEGIN_SRC ipython
-  import tensorflow as tf
-  tf.reset_default_graph()
-  sess = tf.InteractiveSession()
-
-  with tf.variable_scope('a'):
-      with tf.variable_scope('b'):
-          v = tf.get_variable('v', initializer=tf.ones(3))
-  with tf.variable_scope('', reuse=True):
-      v2 = tf.get_variable('a/b/v')
-  init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
-  sess.run(init)  
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython :exports both
-  V1 = tf.random_normal((10,3))
-  V2 = tf.get_variable('abc', initializer=V1)
-  with tf.variable_scope('', reuse=True):
-    abc = tf.get_variable('abc', (10,3))
-    abc.assign(tf.ones((10,3)))
-  init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
-  sess.run(init)
-  abc.eval() - V2.eval()
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-#+BEGIN_EXAMPLE
-  array([[0., 0., 0.],
-  [0., 0., 0.],
-  [0., 0., 0.],
-  [0., 0., 0.],
-  [0., 0., 0.],
-  [0., 0., 0.],
-  [0., 0., 0.],
-  [0., 0., 0.],
-  [0., 0., 0.],
-  [0., 0., 0.]], dtype=float32)
-#+END_EXAMPLE
-:END:
-
-
-*** trying out eager
-
-#+BEGIN_SRC ipython
-  import tensorflow as tf
-  tfe = tf.contrib.eager
-  tfe.enable_eager_execution()
-#+END_SRC
-
-#+BEGIN_SRC ipython
-  import numpy as np
-  A = np.random.randn(5,3)
-  mu, std = tf.nn.normalize_moments(A.shape[0], *tf.nn.moments(tf.cast(A, dtype=tf.float32), axes=0), None)
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-
-
-*** Run ira_rnn
-
-#+BEGIN_SRC ipython
-  %cd marketbot
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-  
-#+BEGIN_SRC ipython
-  from importlib import reload
-  import src.models.lstm as lstm
-  reload(lstm)
-  lstm.__main__()
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython
-  lstm = locate('src.models.lstm')
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-
-*** import_fn
-
-#+BEGIN_SRC ipython
-  from pydoc import locate
-  import tensorflow as tf
-  import numpy as np
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython
-  path = 'marketbot/data/clean/data3.csv'
-  data = np.genfromtxt(path, delimiter=',')[2:, 1:]
-  data.shape
-  #+END_SRC
-
-  #+RESULTS:
-  :RESULTS:
-  : (85985, 3)
-  :END:
-  
-  #+BEGIN_SRC ipython
-  data = tf.convert_to_tensor(data)
-  horizon = 10
-  window = 100
-  targets = data[horizon + window - 1 :, 1] / data[window - 1 : -horizon, 1] - 1
-  features = tf.contrib.signal.frame(data, window, 1, axis=0)[:-horizon, :]
-  tf.data.Dataset.from_tensor_slices({'train': features, 'repsonse':targets})
-#+END_SRC
-
-
-
-
-*** setup
-
-**** Load
-
-#+BEGIN_SRC ipython
-  import pandas as pd
-  import os 
-  from datetime import datetime as dt
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-***** ak preprocess
-
-#+BEGIN_SRC ipython
-  from marketbot.src import dataloader
-  agg_df = dataloader.get_data('marketbot/data/data2.csv')
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-****** temp
-:PROPERTIES:
-:header-args: :eval never
-:END:
-
-#+BEGIN_SRC ipython
-path='marketbot/data/data2.csv'; interval_length=1; window_length=100; stride_length=1; predict_length=10
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython
-  df = pd.read_csv(path, index_col='sequence')
-  df['time'] = pd.to_datetime(df['time'])
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython
-  def mean_price(g):
-      """ computes size-weighted price of trades """
-      vol = g['volume'].sum()
-      price = (g['volume'] * g['price']).sum() / (vol + 1e-8)
-      return pd.Series([vol, price], ['volume', 'price'])
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-
-#+BEGIN_SRC ipython
-  def discretize(df, interval_length):
-      """ interval_length = number of seconds to aggregate in """
-      if interval_length == 0:
-          grouped = df.groupby('time')
-      else:
-          grouped = df.resample('{}S'.format(interval_length), on='time')
-      return grouped.apply(mean_price).reset_index()
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-
-#+BEGIN_SRC ipython
-  agg_df = discretize(df, interval_length)
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython
-  agg_df['price2'] = np.nan
-  agg_df['volume2'] = np.nan
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-whereever price == 0 we have a missing observation
-#+BEGIN_SRC ipython
-  agg_df.loc[(agg_df.price != 0), "price2"] = agg_df[(agg_df.price != 0)].price
-  agg_df.loc[(agg_df.price != 0), "volume2"] = agg_df[(agg_df.price != 0)].volume
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython
-  agg_df.volume2 = agg_df.volume2.fillna(method='ffill')
-  agg_df.price2 = agg_df.price2.fillna(method='ffill')
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython
-  agg_df['change2'] = agg_df.price2.pct_change()
-  agg_df['outcomes2'] = agg_df.price2.pct_change(periods= predict_length).shift(-predict_length)
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-
-
-#+BEGIN_SRC ipython
-  agg_df.volume = agg_df.volume.fillna(0.0)
-  agg_df.price = agg_df.price.fillna(method='ffill')
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython
-  agg_df['change'] = agg_df.price.pct_change()
-  agg_df['outcomes'] = agg_df.price.pct_change(periods= predict_length).shift(-predict_length)
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-
-***** original preprocesss
-:PROPERTIES:
-:header-args: :eval never
-:END:
-
-#+BEGIN_SRC ipython
-  df = pd.read_csv('marketbot/data/data2.csv')
-  df['time'] = pd.to_datetime(df.time)
-  df['timestamp'] = df.time.apply(dt.timestamp)
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython
-  from matplotlib import pyplot as plt
-  import numpy as np
-  data = df.groupby('timestamp').apply(lambda g: g[['price', 'size']].mean(axis=0))
-  assert np.diff(data.index).min() > 0  # data is sorted
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-
-**** model config
-
-#+BEGIN_SRC ipython
-  os.chdir('marketbot/src')
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython
-  from collections import namedtuple
-  flagdct = {'batch_size': 64,
-             'data_dir': '/tmp/dat/',
-             'hidden_dim': 200,
-             'l1reg_coeff': 1e-10,
-             'l2reg_coeff': 1e-9,
-             # 'l1reg_coeff': 1,
-             # 'l2reg_coeff': 1,
-             'latent_dim': 160,
-             'logdir': '/tmp/log/',
-             'n_epochs': 100000,
-             'n_iterations': 100000,
-             'n_samples_predict': 20,
-             'n_samples_train': 10,
-             'print_every': 1000, 
-             'huber_loss_delta': .1,
-             'use_update_ops': False}  # update_ops control dependency is necessary for batch norm
-  FLAGS = namedtuple('FLAGS',flagdct.keys())(**flagdct)
-  ff_params = dict(dim_hidden=20, rnn_stack_height=3)
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-
-*** explore
-
-#+BEGIN_SRC ipython
-  %matplotlib inline
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython :exports both
-  import numpy as np
-  df['logdiffprice'] = np.log(df.price).diff()
-  df[['logdiffprice', 'size', 'timestamp', 'price']].plot(x=['timestamp', 'timestamp'], y=['price', 'logdiffprice'], s=.7, kind='scatter', figsize=(30, 15))
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-: <matplotlib.axes._subplots.AxesSubplot at 0x7fec4cb0c748>
-[[file:./obipy-resources/8538-rS.png]]
-:END:
-
-#+BEGIN_SRC ipython :exports both
-  from matplotlib import pyplot as plt
-  fig, axes = plt.subplots(2, 1, sharex=True, figsize=(10,10))
-  df[['size', 'timestamp', 'price']].plot(x='timestamp', y='price', s=.7, kind='scatter',
-                                          figsize=(30, 15), ax=axes[0])
-  df[['size', 'timestamp', 'logdiffprice']].plot(x='timestamp', y='logdiffprice', s=.7,
-                                                 kind='scatter', figsize=(30, 15), ax=axes[1])
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-: <matplotlib.axes._subplots.AxesSubplot at 0x7fec4c9b1400>
-[[file:./obipy-resources/8538L2Y.png]]
-:END:
-
-
-
-#+BEGIN_SRC ipython :exports both
-  df[['logdiffprice', 'size', 'timestamp']].plot(x='timestamp', y='logdiffprice', figsize=(30, 15))
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-: <matplotlib.axes._subplots.AxesSubplot at 0x7fec4d75d518>
-[[file:./obipy-resources/8538kXG.png]]
-:END:
-
-#+BEGIN_SRC ipython :exports both
-  fig, axes = plt.subplots(2, 1, sharex=True, figsize=(10,10))
-  for i, col in enumerate(data.columns.values):
-     data.reset_index().plot.scatter(x='timestamp', y=col, ax=axes[i], s=.7)
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-[[file:./obipy-resources/19656F3W.png]]
-:END:
-
-#+BEGIN_SRC ipython :exports both
-  from pandas.plotting import scatter_matrix
-  scatter_matrix(data, alpha=0.2, figsize=(6, 6), diagonal='kde')
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-#+BEGIN_EXAMPLE
-  array([[<matplotlib.axes._subplots.AxesSubplot object at 0x7f271599bbe0>,
-  <matplotlib.axes._subplots.AxesSubplot object at 0x7f2715aaaeb8>],
-  [<matplotlib.axes._subplots.AxesSubplot object at 0x7f27159c8be0>,
-  <matplotlib.axes._subplots.AxesSubplot object at 0x7f271582e438>]], dtype=object)
-#+END_EXAMPLE
-[[file:./obipy-resources/19656SBd.png]]
-:END:
-
-
-*** debug
-
-**** playground
-
-#+BEGIN_SRC ipython
-  import os
-  os.chdir('marketbot')
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython
-  import  src.dataloader as dataloader
-  get_data = dataloader.get_data
-  path='data/data2.csv'; predict_length=10; interval_length=1; window_length=100
-  features, outcomes = get_data(path, interval_length, predict_length)
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython
-  import src.playground1 as pg
-  h = 10
-  split=.5
-  env = pg.Environment(features, h, split)  
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython
-  tr = env.reset()
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython :exports both
-  cur, loss, doneflag, info = env.step(0.0)
-  cur, loss, doneflag, info
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-: (array([  3.00000000e-02,   1.31317100e+04,   2.22044605e-16]), 0.0, False, {})
-:END:
-
-#+BEGIN_SRC ipython
-  from importlib import reload
-  reload(pg)
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-: <module 'src.playground1' from '/home/ishai/Documents/work/irabitcoin/marketbot/src/playground1.py'>
-:END:
-
-
-**** run
-
-***** setup
-
-#+BEGIN_SRC ipython
-  import os
-  os.chdir('marketbot')
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-Create input provider
-#+BEGIN_SRC ipython
-  import  src.dataloader as dataloader
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython
-  get_data = dataloader.get_data
-  WindowGen = dataloader.WindowGen
-  quantize = dataloader.quantize
-  path='data/data2.csv'; predict_length=10; interval_length=1; window_length=100
-  features, outcomes = get_data(path, interval_length, predict_length)
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython
-  import numpy as np
-  amin=-0.01
-  amax=0.01
-  step=1e-5
-  Y_n_categories = int(np.round((amax-amin)/step))
-#+END_SRC
-
-  #+RESULTS:
-  :RESULTS:
-  :END:
-
-#+BEGIN_SRC ipython
-  q_outcomes = quantize(outcomes, amin=amin, amax=amax, step=step)
-  q_outcomes = np.expand_dims(q_outcomes, axis=1)
-  gen = WindowGen(features, q_outcomes, window_length, predict_length, Y_n_categories)
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython :eval never
-  from importlib import reload
-  reload(dataloader)
-#+END_SRC
-
-#+BEGIN_SRC ipython
-  import marketbot.src.model1.runner as runner
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython
-  from collections import namedtuple
-  flagdct = {'batch_size': 128,
-             'data_dir': '/tmp/dat/',
-             'hidden_dim': 200,
-             'l1reg_coeff': 1e-10,
-             'l2reg_coeff': 1e-9,
-             # 'l1reg_coeff': 1,
-             # 'l2reg_coeff': 1,
-             'latent_dim': 160,
-             'logdir': '/tmp/log/',
-             'n_epochs': 100000,
-             'n_iterations': 100000,
-             'n_samples_predict': 20,
-             'n_samples_train': 10,
-             'print_every': 1000, 
-             'huber_loss_delta': .1,
-             'use_update_ops': False}  # update_ops control dependency is necessary for batch norm
-  FLAGS = namedtuple('FLAGS',flagdct.keys())(**flagdct)
-  ff_params = dict(dim_hidden=20, rnn_stack_height=3)
-
-  catmodel = runner.Learner(ff_params, FLAGS)
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython
-  catmodel.initialize_train_graph(gen)
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-
-***** train
-
-#+BEGIN_SRC ipython
-  catmodel.train(100)
-#+END_SRC
-
-#+BEGIN_SRC ipython
-  from importlib import reload
-  reload(runner)
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-: <module 'marketbot.src.model1.runner' from '/home/ishai/Documents/work/irabitcoin/marketbot/src/model1/runner.py'>
-:END:
-
-
-***** predict
-
-#+BEGIN_SRC ipython
-  
-#+END_SRC
-
-
-**** genertor
-
-#+BEGIN_SRC ipython
-  import utils
-  example_generator = utils.GrabSequence(X=data.values, t_ix=data.index.values, input_seq_len=100, time_gap_to_predict=10, stride=1)
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython
-  from importlib import reload
-  reload(utils)
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-: <module 'utils' from '/home/ishai/Documents/work/bitcoin/IraBC/marketbot/src/catnet/utils.py'>
-:END:
-
-#+BEGIN_SRC ipython
-  import tensorflow as tf
-  tf.reset_default_graph()
-  g = tf.Graph()
-  sess = tf.Session(graph=g)
-  with g.as_default():
-      train_ds = tf.data.Dataset.from_generator(example_generator, (tf.float32, tf.float32),
-                                                (tf.TensorShape([None, 2]), tf.TensorShape([2])))
-      train_ds.shuffle(buffer_size=100000)
-      train_ds = train_ds.batch(100)
-      iterator = tf.data.Iterator.from_structure(train_ds.output_types, train_ds.output_shapes)
-      training_init_op = iterator.make_initializer(train_ds)
-      batch = iterator.get_next()
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-#+BEGIN_SRC ipython
-  with sess.as_default():
-      sess.run(training_init_op)
-      while (True):
-          b = sess.run(batch)
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
-
-
-*** run
-
-#+BEGIN_SRC ipython
-  from runner import Learner
-  catmodel = Learner(ff_params, FLAGS)
-  catmodel.fit(data.values, t_ix=data.index.values)
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-:END:
 
 
 
@@ -2766,9 +3869,12 @@ Create input provider
 
 
 ** temp
-:PROPERTIES:
+
 :header-args: jupyter-julia :session marketbot-julia-ssh.json :results raw drawer :tangle mbot.jl :eval never-export :async t
 :END:
+
+*** 
+
 
 *** 
 #+BEGIN_SRC jupyter-julia
