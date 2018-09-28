@@ -1,0 +1,1 @@
+This docker file is, in part, on the [[https://github.com/malmaud/TensorFlow.jl/tree/master/Docker/gpu][TensorFlow.jl docker]]

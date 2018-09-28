@@ -1,22 +1,30 @@
 import tensorflow as tf
 from .predictor import seq2seq
 from .opt import get_opt_step
-Modekeys = tf.estimator.ModeKeys
+from .loss import metrics
+ModeKeys = tf.estimator.ModeKeys
 
 
-def model_fn(x, y, mode, params):
-    yhat = seq2seq(x, **params)
+def model_fn(features, labels, mode, params):
 
-    if mode == Modekeys.PREDICT:
-        return tf.estimator.EstimatorSpec(mode=mode, predictions=yhat)
+    device = tf.device('/cpu:0') if mode != ModeKeys.TRAIN else tf.device("/device:GPU:0")
+    with device:
+        x = features["xdiff"]
+        xstart = features["xin"]
+        y = labels
+        x = tf.transpose(x, [1, 0, 2])  # x is batch major but seq2seq assumes time major
+        yhat = seq2seq(x, xstart, **params)
+        yhat = tf.transpose(yhat, [1, 0, 2])  # and back to batch major
 
-    loss = tf.losses.mean_squared_error(y, yhat)
-    MAE_loss = tf.losses.mean_absolute_error(y, yhat)
-    loss_summary = tf.summary.scalar("MSE_loss", loss)
+        if mode == ModeKeys.PREDICT:
+            return tf.estimator.EstimatorSpec(mode=mode, predictions=yhat)
 
-    opt_step = get_opt_step(loss, **params)
+        loss, metricsdict = metrics(yhat, y)
+        loss_summary = tf.summary.scalar("MSE_loss", loss)
+        opt_step = get_opt_step(loss, **params)
+
     return tf.estimator.EstimatorSpec(
         mode=mode,
         loss=loss,
         train_op=opt_step,
-        eval_metric_ops={"MSE": loss, "MAE": MAE_loss})
+        eval_metric_ops=metricsdict)
