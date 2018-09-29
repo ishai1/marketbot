@@ -8,7 +8,6 @@ share
 
 __pycache__
 *.pyc
-# emacs
-*~
 trained_models
 *.csv
+*flymake.py
