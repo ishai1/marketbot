@@ -10,9 +10,9 @@ def metrics(yhat, y):
     MAE_total = tf.metrics.mean_absolute_error(y_total, yhat_total)
     MAPE_total = tf.metrics.mean(tf.div(tf.losses.absolute_difference(y_total, yhat_total), y_total))
     metricsdict = {
-        "diff": {"MAE": MAE_diff,
-                 "MSE": MSE_diff},
-        "total": {"MAE": MAE_total,
-                  "MAPE": MAPE_total}
-    }
+        "MAE_diff": MAE_diff,
+        "MSE_diff": MSE_diff,
+        "MAE_total": MAE_total,
+        "MAPE_total": MAPE_total}
+
     return loss, metricsdict
