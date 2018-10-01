@@ -2623,16 +2623,6 @@ Load local file
 
 Though still not negligible, mean error hovers below 0.5.
 
-#+BEGIN_SRC jupyter-julia
-  using Gadfly
-  p = Gadfly.plot(layer(x=1:124350, y=relerrvec, Geom.smooth, Theme(default_color="orange")),
-                  layer(x=1:124350, y=relerrvec, Geom.point, Theme(point_size=0.3mm,
-                                                                   default_color="blue")),
-                  Guide.xlabel("Time index"),
-                  Guide.ylabel("Relative error"));
-  draw(PNG("tmp2.png", 6inch, 4inch), p)
-#+END_SRC
-
 
 **** TensorFlow.jl
 
