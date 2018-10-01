@@ -1,4 +1,4 @@
-u-*- eval: (progn (pyvenv-workon "ml364") (auto-revert-mode 1))-*-
+-*- eval: (progn (pyvenv-workon "ml364") (auto-revert-mode 1))-*-
 #+STARTUP: indent
 #+OPTIONS: author:Ishai
 #+TITLE: Market Bot
@@ -384,6 +384,17 @@ def decorator_factory(key, value):
 #+END_SRC
 
 
+* README
+
+** MarketBot2.0
+
+This project tries to forecast short term bitcoin price fluctuations using neural networks.
+
+It's primary objective was to provide an opprtunity to try out the new release of [[https://github.com/JuliaLang/julia/][Julia]] (0.7/1.0) as well as try out sequence forecasting using attention.
+
+Using [[src/utils/collect.py][python websockets]] to extract data from coinbase, it uses julia to [[Clean Up][process and upsample]] the collected data and then calls an [[src/pytf][estimator based tensorflow model]] to train on the data.
+
+
 * snippets
 
 ** Julia
@@ -442,16 +453,16 @@ total 46M
 
 #+RESULTS:
 :RESULTS:
-2018-08-15T20:00:07.341000Z,289.01000000,0.95307512,ETH-USD
-2018-08-15T20:00:07.878000Z,6383.82000000,0.05064896,BTC-USD
-2018-08-15T20:00:07.878000Z,6383.82000000,0.06453496,BTC-USD
-2018-08-15T20:00:08.441000Z,6383.81000000,1.52758604,BTC-USD
-2018-08-15T20:00:08.441000Z,6383.81000000,1.75478104,BTC-USD
-2018-08-15T20:00:08.441000Z,6383.81000000,0.00118000,BTC-USD
-2018-08-15T20:00:08.441000Z,6383.81000000,0.56368644,BTC-USD
-2018-08-15T20:00:08.441000Z,6383.81000000,0.03650000,BTC-USD
-2018-08-15T20:00:08.441000Z,6383.81000000,0.00810000,BTC-USD
-2018-08-15T20:00:08.441000Z,6383.81000000,0.00380000,BTC-USD
+2018-08-15T20:00:07.341000Z,289.01000000,0.95307512,ETH-USD
+2018-08-15T20:00:07.878000Z,6383.82000000,0.05064896,BTC-USD
+2018-08-15T20:00:07.878000Z,6383.82000000,0.06453496,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,1.52758604,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,1.75478104,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,0.00118000,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,0.56368644,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,0.03650000,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,0.00810000,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,0.00380000,BTC-USD
 :END:
 
 # DateTime does not recognize "2018-08-14T04:13:06.697000Z" so need to adjust string before processing. 
@@ -511,11 +522,6 @@ Assign primary keys
 #+BEGIN_SRC jupyter-julia
    t = table(t, pkey=(:product_id, :date))
 #+END_SRC
-
-#+RESULTS:
-:RESULTS:
-1 - 3da0d492-de89-43af-b013-ccb7f0ad59da
-:END:
 
 Lets check if the data is sorted with in groups.
 #+BEGIN_SRC jupyter-julia
@@ -870,7 +876,7 @@ Apply function across groups and unstack.
 #+RESULTS:
 :RESULTS:
 # Out[265]:
-[[file:./obipy-resources/GHjZ7d.svg]]
+[[file:obipy-resources/GHjZ7d.png]]
 :END:
 
 Apply function across groups and unstack.
@@ -1131,16 +1137,16 @@ total 46M
 
 #+RESULTS:
 :RESULTS:
-2018-08-15T20:00:07.341000Z,289.01000000,0.95307512,ETH-USD
-2018-08-15T20:00:07.878000Z,6383.82000000,0.05064896,BTC-USD
-2018-08-15T20:00:07.878000Z,6383.82000000,0.06453496,BTC-USD
-2018-08-15T20:00:08.441000Z,6383.81000000,1.52758604,BTC-USD
-2018-08-15T20:00:08.441000Z,6383.81000000,1.75478104,BTC-USD
-2018-08-15T20:00:08.441000Z,6383.81000000,0.00118000,BTC-USD
-2018-08-15T20:00:08.441000Z,6383.81000000,0.56368644,BTC-USD
-2018-08-15T20:00:08.441000Z,6383.81000000,0.03650000,BTC-USD
-2018-08-15T20:00:08.441000Z,6383.81000000,0.00810000,BTC-USD
-2018-08-15T20:00:08.441000Z,6383.81000000,0.00380000,BTC-USD
+2018-08-15T20:00:07.341000Z,289.01000000,0.95307512,ETH-USD
+2018-08-15T20:00:07.878000Z,6383.82000000,0.05064896,BTC-USD
+2018-08-15T20:00:07.878000Z,6383.82000000,0.06453496,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,1.52758604,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,1.75478104,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,0.00118000,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,0.56368644,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,0.03650000,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,0.00810000,BTC-USD
+2018-08-15T20:00:08.441000Z,6383.81000000,0.00380000,BTC-USD
 :END:
 
 # DateTime does not recognize "2018-08-14T04:13:06.697000Z" so need to adjust string before processing. 
@@ -2391,7 +2397,6 @@ conversion from Float64 to Float32 does not behave
 :END:
 
 
-
 *** Model
 
 A recurrent model which takes a sequence of annotations, attends, and returns a predicted output.
@@ -2405,7 +2410,7 @@ Approximately follows [[https://arxiv.org/abs/1409.0473][Bahdanau et al]]. but u
 #+BEGIN_SRC jupyter-julia
   len_in = 100
   len_out = 20
-  nbatch = 32  
+  nbatch = 32
   nepochs = 10
   model_dir = "tmpZc797s" # mktempdir(abspath(""))
   frac_test = .3
@@ -2414,7 +2419,7 @@ Approximately follows [[https://arxiv.org/abs/1409.0473][Bahdanau et al]]. but u
 
 #+RESULTS:
 :RESULTS:
-# Out[22]:
+# Out[4]:
 :END:
 
 #+BEGIN_SRC jupyter-julia
@@ -2432,7 +2437,7 @@ Approximately follows [[https://arxiv.org/abs/1409.0473][Bahdanau et al]]. but u
 
 #+RESULTS:
 :RESULTS:
-# Out[14]:
+# Out[5]:
 #+BEGIN_EXAMPLE
   124470×15 Array{Float64,2}:
   0.0834541  474.229  537.9   5680.0   …  0.00888     50.3186  57.37
@@ -2477,7 +2482,7 @@ Approximately follows [[https://arxiv.org/abs/1409.0473][Bahdanau et al]]. but u
 
 #+RESULTS:
 :RESULTS:
-# Out[15]:
+# Out[7]:
 #+BEGIN_EXAMPLE
   Dict{String,Real} with 8 entries:
   "Nc"       => 12
@@ -2542,8 +2547,8 @@ Load local file
 
 #+RESULTS:
 :RESULTS:
-# Out[25]:
-: PyObject <tensorflow.python.estimator.estimator.Estimator object at 0x7fe618256898>
+# Out[9]:
+: PyObject <tensorflow.python.estimator.estimator.Estimator object at 0x7fc604033208>
 :END:
 
 #+BEGIN_SRC jupyter-julia
@@ -2593,6 +2598,39 @@ Load local file
 #+BEGIN_SRC jupyter-julia
   preds = estimator[:predict](pyinput_fn_test)
   preds = PyCall.builtin[:list](preds)
+#+END_SRC
+
+#+BEGIN_SRC jupyter-julia
+  ytrue(k::Int64) = diff(test_data[(k+len_in-1):(k+len_in+len_out-1),:], 1)
+  err(k::Int64) = mean(abs.(sum(ytrue(k),1) .- sum(preds[k], 1)))
+  relerr(k::Int64) = mean(abs.((sum(ytrue(k),1) .- sum(preds[k], 1))./(1e-6.+sum(ytrue(k),1))))
+  errvec = map(err, 1:124350);
+  relerrvec = map(relerr, 1:124350);
+#+END_SRC
+
+#+BEGIN_SRC jupyter-julia
+  using Gadfly
+  p = Gadfly.plot(layer(x=1:124350, y=errvec, Geom.smooth, Theme(default_color="orange")),
+                  layer(x=1:124350, y=errvec, Geom.point, Theme(point_size=0.3mm,
+                                                                default_color="blue")),
+                  Guide.xlabel("Time index"),
+                  Guide.ylabel("Absolute error"));
+  draw(PNG("tmp.png", 6inch, 4inch), p)
+#+END_SRC
+
+#+RESULTS:
+[[file:obipy-resources/tmp.png]]
+
+Though still not negligible, mean error hovers below 0.5.
+
+#+BEGIN_SRC jupyter-julia
+  using Gadfly
+  p = Gadfly.plot(layer(x=1:124350, y=relerrvec, Geom.smooth, Theme(default_color="orange")),
+                  layer(x=1:124350, y=relerrvec, Geom.point, Theme(point_size=0.3mm,
+                                                                   default_color="blue")),
+                  Guide.xlabel("Time index"),
+                  Guide.ylabel("Relative error"));
+  draw(PNG("tmp2.png", 6inch, 4inch), p)
 #+END_SRC
 
 
