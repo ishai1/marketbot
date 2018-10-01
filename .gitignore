@@ -5,7 +5,6 @@ pip-selfcheck.json
 pyvenv.cfg
 .ipynb_checkpoints
 share
-postproc*.feather
 
 __pycache__
 *.pyc
